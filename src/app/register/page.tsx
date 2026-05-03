@@ -63,9 +63,9 @@ export default function RegisterPage() {
       } else {
         setError("Une erreur inattendue est survenue.");
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Erreur signUp Supabase:", err);
-      if (err?.message?.toLowerCase().includes("confirmation mail")) {
+      if (err instanceof Error && err.message.toLowerCase().includes("confirmation mail")) {
         setError(
           "Erreur Brevo / Supabase SMTP : Impossible d'envoyer l'e-mail de confirmation. Veuillez vérifier sur Brevo que l'adresse 'bioathletethics@gmail.com' est bien un expéditeur autorisé (Sender) et que vous avez utilisé la Master Key SMTP (et non la clé API standard)."
         );
@@ -102,7 +102,7 @@ export default function RegisterPage() {
       } else {
         setError("Échec de la validation. Veuillez réessayer.");
       }
-    } catch (err) {
+    } catch {
       setError("Erreur lors de la confirmation.");
     } finally {
       setLoading(false);

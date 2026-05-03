@@ -22,7 +22,7 @@ export default function LoginPage() {
     setShowResend(false);
     setResendStatus("");
     
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     
     if (error) {
       if (error.message.toLowerCase().includes("email not confirmed") || error.message.toLowerCase().includes("confirm your email")) {
@@ -53,7 +53,7 @@ export default function LoginPage() {
       } else {
         setResendStatus("Un nouveau code a été envoyé avec succès !");
       }
-    } catch (err) {
+    } catch {
       setResendStatus("Erreur lors de l'envoi.");
     }
   };
