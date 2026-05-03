@@ -805,21 +805,6 @@ export default function DashboardPage() {
           )}
         </motion.div>
 
-        {/* Partager mon profil URL button */}
-        {username && (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleShareProfile}
-            className="w-full py-4 bg-gradient-to-tr from-emerald-500/10 to-blue-500/10 hover:from-emerald-500/20 hover:to-blue-500/20 border border-emerald-500/30 hover:border-emerald-500/50 font-extrabold text-sm text-center text-white rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.15)] transition-all duration-300 tracking-wide uppercase select-none flex items-center justify-center gap-2"
-          >
-            🔗 Partager mon profil
-          </motion.button>
-        )}
-        {shareText && (
-          <p className="text-center text-xs text-emerald-400 font-semibold select-none -mt-5">{shareText}</p>
-        )}
-
         {/* Navigation Tabs */}
         <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-none w-full border-b border-white/10">
           <button
