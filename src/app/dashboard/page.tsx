@@ -28,6 +28,7 @@ interface Sponsor {
   id: string | number;
   name: string;
   logo: string;
+  category?: string; // "Équipementier" or "Partenaire"
   user_id?: string;
 }
 
@@ -38,7 +39,7 @@ interface Video {
   user_id?: string;
 }
 
-const PREDEFINED_SPONSORS = [
+const PREDEFINED_EQUIPEMENTIERS = [
   { name: "Nike", logo: "👟 Nike" },
   { name: "Adidas", logo: "👟 Adidas" },
   { name: "Puma", logo: "👟 Puma" },
@@ -49,8 +50,12 @@ const PREDEFINED_SPONSORS = [
   { name: "Mizuno", logo: "👟 Mizuno" },
   { name: "Hoka", logo: "👟 Hoka" },
   { name: "Saucony", logo: "👟 Saucony" },
+];
+
+const PREDEFINED_PARTENAIRES = [
   { name: "Red Bull", logo: "🥤 Red Bull" },
   { name: "Oakley", logo: "🕶️ Oakley" },
+  { name: "Yazio", logo: "🥗 Yazio" },
 ];
 
 export default function DashboardPage() {
@@ -78,7 +83,8 @@ export default function DashboardPage() {
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [newLinkIcon, setNewLinkIcon] = useState("🔗");
 
-  const [selectedSponsor, setSelectedSponsor] = useState("Nike");
+  const [selectedEquip, setSelectedEquip] = useState("Nike");
+  const [selectedPartner, setSelectedPartner] = useState("Red Bull");
   const [customSponsorName, setCustomSponsorName] = useState("");
 
   const [newVideoUrl, setNewVideoUrl] = useState("");
@@ -220,9 +226,9 @@ export default function DashboardPage() {
     if (!newLinkTitle || !newLinkUrl || !userId) return;
     setLinkError("");
 
-    // Freemium restriction check: 3 links limit for standard users
+    // Freemium restriction check: 3 links limit
     if (!isPremium && links.length >= 3) {
-      setLinkError("Passe en mode Élite pour débloquer plus de 3 liens !");
+      setLinkError("Passe en mode Élite pour ajouter plus de liens !");
       return;
     }
 
@@ -249,7 +255,41 @@ export default function DashboardPage() {
     setNewLinkIcon("🔗");
   };
 
-  const handleAddSponsor = async (e: React.FormEvent) => {
+  // Step 1: Handling Category and exclusivity for Equipment Manufacturer (Équipementier)
+  const handleAddEquipementier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId) return;
+
+    const matched = PREDEFINED_EQUIPEMENTIERS.find((eq) => eq.name === selectedEquip);
+    const newItem: Omit<Sponsor, "id"> = {
+      name: selectedEquip,
+      logo: matched ? matched.logo : "🏢 " + selectedEquip,
+      category: "Équipementier",
+      user_id: userId,
+    };
+
+    try {
+      // Exclusivity: Remove all previous "Équipementier" category sponsors for the user
+      await supabase
+        .from("sponsors")
+        .delete()
+        .eq("user_id", userId)
+        .eq("category", "Équipementier");
+
+      const { data, error } = await supabase.from("sponsors").insert([newItem]).select();
+
+      // Refresh list
+      const { data: spData } = await supabase
+        .from("sponsors")
+        .select("*")
+        .eq("user_id", userId);
+      if (spData) setSponsors(spData);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAddPartner = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId) return;
 
@@ -258,13 +298,15 @@ export default function DashboardPage() {
       newItem = {
         name: customSponsorName,
         logo: "🏢 " + customSponsorName,
+        category: "Partenaire",
         user_id: userId,
       };
     } else {
-      const matched = PREDEFINED_SPONSORS.find((s) => s.name === selectedSponsor);
+      const matched = PREDEFINED_PARTENAIRES.find((p) => p.name === selectedPartner);
       newItem = {
-        name: selectedSponsor,
-        logo: matched ? matched.logo : "🏢 " + selectedSponsor,
+        name: selectedPartner,
+        logo: matched ? matched.logo : "🏢 " + selectedPartner,
+        category: "Partenaire",
         user_id: userId,
       };
     }
@@ -451,8 +493,8 @@ export default function DashboardPage() {
             )}
           </div>
           {!isPremium && (
-            <p className="text-[10px] text-gray-400 font-medium">
-              Le mode Standard est limité à 3 liens maximum. Passez au mode Élite pour débloquer toutes les fonctionnalités.
+            <p className="text-[10px] text-emerald-400 font-medium">
+              Version Gratuite : Limite de 3 liens active
             </p>
           )}
         </motion.div>
@@ -532,7 +574,7 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
-        {/* Section Sponsors */}
+        {/* Section Sponsors : Categorisation et Exclusivité Équipementier */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -542,19 +584,47 @@ export default function DashboardPage() {
           <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400 mb-4 select-none">
             Gestion des Sponsors
           </h2>
-          <form onSubmit={handleAddSponsor} className="flex flex-col gap-4">
+          
+          {/* Categorie 1: Équipementier unique */}
+          <form onSubmit={handleAddEquipementier} className="flex flex-col gap-3 mb-6">
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                Sélectionner une marque majeure
+                Choisir un Équipementier (Exclusif)
               </label>
               <select
-                value={selectedSponsor}
-                onChange={(e) => setSelectedSponsor(e.target.value)}
+                value={selectedEquip}
+                onChange={(e) => setSelectedEquip(e.target.value)}
                 className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white"
               >
-                {PREDEFINED_SPONSORS.map((sp) => (
-                  <option key={sp.name} value={sp.name}>
-                    {sp.name}
+                {PREDEFINED_EQUIPEMENTIERS.map((eq) => (
+                  <option key={eq.name} value={eq.name}>
+                    {eq.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="submit"
+              className="w-full py-3 bg-emerald-500 font-extrabold text-xs tracking-wider uppercase text-black rounded-xl hover:shadow-[0_4px_16px_rgba(16,185,129,0.25)] transition-all duration-300 mt-1 select-none"
+            >
+              Définir mon Équipementier
+            </button>
+          </form>
+
+          {/* Categorie 2: Partenaires multiples */}
+          <form onSubmit={handleAddPartner} className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                Choisir un Partenaire
+              </label>
+              <select
+                value={selectedPartner}
+                onChange={(e) => setSelectedPartner(e.target.value)}
+                className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white mb-2"
+              >
+                {PREDEFINED_PARTENAIRES.map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {p.name}
                   </option>
                 ))}
               </select>
@@ -562,7 +632,7 @@ export default function DashboardPage() {
 
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                Ou ajouter une marque personnalisée
+                Ou ajouter un partenaire personnalisé
               </label>
               <input
                 type="text"
@@ -575,12 +645,13 @@ export default function DashboardPage() {
 
             <button
               type="submit"
-              className="w-full py-3 bg-emerald-500 font-extrabold text-xs tracking-wider uppercase text-black rounded-xl hover:shadow-[0_4px_16px_rgba(16,185,129,0.25)] transition-all duration-300 mt-1 select-none"
+              className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 font-extrabold text-xs tracking-wider uppercase text-white rounded-xl transition-all duration-300 mt-1 select-none"
             >
-              Ajouter Sponsor
+              Ajouter Partenaire
             </button>
           </form>
 
+          {/* Liste des Sponsors actuels */}
           <div className="flex flex-col gap-2 mt-4">
             {sponsors.map((sp, i) => (
               <div
@@ -591,9 +662,14 @@ export default function DashboardPage() {
                   <span className="text-base p-1.5 bg-neutral-900 border border-white/5 rounded-xl">
                     {sp.logo}
                   </span>
-                  <span className="font-semibold text-sm text-white select-none">
-                    {sp.name}
-                  </span>
+                  <div className="flex flex-col select-none">
+                    <span className="font-semibold text-sm text-white leading-none">
+                      {sp.name}
+                    </span>
+                    <span className="text-[9px] text-emerald-400 font-bold uppercase mt-1">
+                      {sp.category || "Sponsor"}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={() => handleRemoveSponsor(sp.id, i)}

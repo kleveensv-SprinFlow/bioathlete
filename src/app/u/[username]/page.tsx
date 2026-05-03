@@ -31,6 +31,7 @@ interface Sponsor {
   id: string | number;
   name: string;
   logo: string;
+  category?: string;
 }
 
 interface Video {
@@ -110,7 +111,7 @@ export default function PublicAthleteProfile() {
 
         const uid = profile.user_id;
 
-        // Fetch records and evolution
+        // Fetch records
         const { data: perfData, error: perfErr } = await supabase
           .from("performances")
           .select("*")
@@ -206,6 +207,9 @@ export default function PublicAthleteProfile() {
     );
   }
 
+  const equipementiers = sponsors.filter((sp) => sp.category === "Équipementier");
+  const partenaires = sponsors.filter((sp) => sp.category === "Partenaire" || !sp.category);
+
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500 selection:text-black">
       {/* Scroll Progress Bar */}
@@ -263,8 +267,45 @@ export default function PublicAthleteProfile() {
           </div>
         </StaggeredWrapper>
 
+        {/* Action 3: Display Equipment manufacturer prominently first, then partners */}
+        {equipementiers.length > 0 && (
+          <StaggeredWrapper delay={0.15}>
+            <div className="w-full select-none text-center flex flex-col items-center">
+              <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-2 select-none">
+                Équipementier Officiel
+              </h3>
+              {equipementiers.map((eq, idx) => (
+                <motion.div
+                  key={idx}
+                  whileHover={{ scale: 1.05 }}
+                  className="backdrop-blur-xl bg-white/5 border border-white/10 border-emerald-500/30 rounded-2xl px-6 py-4 flex items-center gap-3 shadow-xl select-none text-sm font-black tracking-wider uppercase"
+                >
+                  <span className="text-2xl">{eq.logo}</span>
+                </motion.div>
+              ))}
+            </div>
+          </StaggeredWrapper>
+        )}
+
+        {partenaires.length > 0 && (
+          <StaggeredWrapper delay={0.18}>
+            <div className="w-full flex flex-wrap items-center justify-center gap-3 select-none">
+              {partenaires.map((sp, idx) => (
+                <motion.div
+                  key={idx}
+                  whileHover={{ scale: 1.1, y: -3 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="backdrop-blur-xl bg-white/5 border border-white/10 hover:border-emerald-500/30 rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg select-none text-xs font-bold hover:shadow-[0_4px_24px_rgba(16,185,129,0.15)] transition-all duration-300"
+                >
+                  <span>{sp.logo}</span>
+                </motion.div>
+              ))}
+            </div>
+          </StaggeredWrapper>
+        )}
+
         {/* Horizontal Gallery */}
-        <StaggeredWrapper delay={0.15}>
+        <StaggeredWrapper delay={0.22}>
           <div className="w-full select-none">
             <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-3 px-1">
               Galerie Photos
@@ -292,24 +333,6 @@ export default function PublicAthleteProfile() {
             </div>
           </div>
         </StaggeredWrapper>
-
-        {/* Sponsors Badges */}
-        {sponsors.length > 0 && (
-          <StaggeredWrapper delay={0.2}>
-            <div className="w-full flex flex-wrap items-center justify-center gap-3 select-none">
-              {sponsors.map((sp, idx) => (
-                <motion.div
-                  key={idx}
-                  whileHover={{ scale: 1.1, y: -3 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="backdrop-blur-xl bg-white/5 border border-white/10 hover:border-emerald-500/30 rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg select-none text-xs font-bold hover:shadow-[0_4px_24px_rgba(16,185,129,0.15)] transition-all duration-300"
-                >
-                  <span>{sp.logo}</span>
-                </motion.div>
-              ))}
-            </div>
-          </StaggeredWrapper>
-        )}
 
         {/* Vidéos Externes */}
         {videos.length > 0 && (
