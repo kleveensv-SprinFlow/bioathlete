@@ -135,12 +135,12 @@ export default function DashboardPage() {
             const generatedUsername = "athlete-" + uid.slice(0, 5);
             const { data: newProf, error: createErr } = await supabase
               .from("profiles")
-              .insert([{
+              .upsert([{
                 user_id: uid,
                 username: generatedUsername,
                 full_name: "Nouvel Athlète",
                 is_premium: false
-              }])
+              }], { onConflict: "user_id" })
               .select()
               .maybeSingle();
 
