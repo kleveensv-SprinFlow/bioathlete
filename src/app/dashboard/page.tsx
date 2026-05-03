@@ -66,6 +66,7 @@ export default function DashboardPage() {
   const [usernameInput, setUsernameInput] = useState("");
   const [profSuccess, setProfSuccess] = useState("");
   const [isPremium, setIsPremium] = useState(false);
+  const [showStripeModal, setShowStripeModal] = useState(false);
 
   const [performances, setPerformances] = useState<Performance[]>([]);
   const [links, setLinks] = useState<SocialLink[]>([]);
@@ -485,7 +486,7 @@ export default function DashboardPage() {
             </div>
             {!isPremium && (
               <button
-                onClick={handleUpgradePremium}
+                onClick={() => setShowStripeModal(true)}
                 className="px-4 py-2 bg-emerald-500 text-black font-extrabold text-xs tracking-wider uppercase rounded-xl hover:bg-emerald-400 shadow-lg transition-all"
               >
                 Devenir Élite
@@ -980,6 +981,99 @@ export default function DashboardPage() {
             Rappel : L&apos;athlète s&apos;engage à posséder l&apos;ensemble des droits de diffusion et d&apos;auteur pour les images, vidéos et contenus qu&apos;il publie sur son profil.
           </p>
         </div>
+
+        {/* Premium Upgrade Stripe Modal */}
+        {showStripeModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-4 select-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="backdrop-blur-2xl bg-neutral-900/90 border border-emerald-500/30 rounded-3xl p-6 shadow-2xl max-w-sm w-full flex flex-col gap-5 border-t-emerald-400"
+            >
+              <div className="flex flex-col select-none">
+                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                  Élévation de statut
+                </span>
+                <h3 className="text-lg font-black text-white tracking-tight leading-snug">
+                  Abonnement Mode Élite
+                </h3>
+                <p className="text-gray-400 text-xs">
+                  Abonnement mensuel de 9.99 € • Annulable à tout moment
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center gap-2 text-xs text-gray-300 font-medium">
+                  <span className="text-emerald-400 text-sm">⚡</span> Liens illimités (Plus de limites)
+                </div>
+                <div className="flex items-center gap-2 text-xs text-gray-300 font-medium">
+                  <span className="text-emerald-400 text-sm">🏆</span> Vitrine certifiée Élite Pro
+                </div>
+                <div className="flex items-center gap-2 text-xs text-gray-300 font-medium">
+                  <span className="text-emerald-400 text-sm">📄</span> Génération illimitée de Media Kit
+                </div>
+              </div>
+
+              {/* Fake Stripe Credit Card Fields */}
+              <div className="flex flex-col gap-3 pt-2 border-t border-white/5 select-none">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Numéro de carte
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="4242 4242 4242 4242"
+                    defaultValue="4242424242424242"
+                    className="w-full p-3 bg-neutral-950 border border-white/10 focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600 rounded-xl"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                      Expiration
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="MM/YY"
+                      defaultValue="12/26"
+                      className="w-full p-3 bg-neutral-950 border border-white/10 focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600 rounded-xl"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                      CVC
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="123"
+                      defaultValue="123"
+                      className="w-full p-3 bg-neutral-950 border border-white/10 focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600 rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 mt-2">
+                <button
+                  onClick={() => {
+                    handleUpgradePremium();
+                    setShowStripeModal(false);
+                  }}
+                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300"
+                >
+                  Activer mon abonnement (9.99€)
+                </button>
+                <button
+                  onClick={() => setShowStripeModal(false)}
+                  className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all"
+                >
+                  Annuler
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
 
       </div>
     </div>
