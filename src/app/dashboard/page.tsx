@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import jsPDF from "jspdf";
 
@@ -21,10 +22,32 @@ interface SocialLink {
   icon: string;
 }
 
+interface Sponsor {
+  id: string | number;
+  name: string;
+  logo: string;
+}
+
+// Liste d'objets JSON contenant les noms des marques majeures
+const PREDEFINED_SPONSORS = [
+  { name: "Nike", logo: "👟 Nike" },
+  { name: "Adidas", logo: "👟 Adidas" },
+  { name: "Puma", logo: "👟 Puma" },
+  { name: "Asics", logo: "👟 Asics" },
+  { name: "New Balance", logo: "👟 NB" },
+  { name: "Kiprun", logo: "👟 Kiprun" },
+  { name: "Decathlon", logo: "👟 Decathlon" },
+  { name: "Mizuno", logo: "👟 Mizuno" },
+  { name: "Hoka", logo: "👟 Hoka" },
+  { name: "Saucony", logo: "👟 Saucony" },
+  { name: "Red Bull", logo: "🥤 Red Bull" },
+  { name: "Oakley", logo: "🕶️ Oakley" },
+];
+
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Local state with simulated fallback mock data
+  // Local state with fallback mock data
   const [performances, setPerformances] = useState<Performance[]>([
     { date: "2024-02-15", distance: "60m", temps: "6.55", competition: "Chpt de France" },
     { date: "2024-04-20", distance: "100m", temps: "10.32", competition: "Meeting Intl" },
@@ -36,7 +59,12 @@ export default function DashboardPage() {
     { id: 2, title: "Instagram", url: "https://instagram.com/", icon: "📸" },
   ]);
 
-  const [views, setViews] = useState(124); // Compteur de visites local / fallback
+  const [sponsors, setSponsors] = useState<Sponsor[]>([
+    { id: 1, name: "Nike", logo: "👟 Nike" },
+    { id: 2, name: "Red Bull", logo: "🥤 Red Bull" },
+  ]);
+
+  const [views, setViews] = useState(124);
 
   // Form states
   const [newDate, setNewDate] = useState("");
@@ -47,6 +75,9 @@ export default function DashboardPage() {
   const [newLinkTitle, setNewLinkTitle] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [newLinkIcon, setNewLinkIcon] = useState("🔗");
+
+  const [selectedSponsor, setSelectedSponsor] = useState("Nike");
+  const [customSponsorName, setCustomSponsorName] = useState("");
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -65,6 +96,11 @@ export default function DashboardPage() {
         const { data: viewData, error: viewErr } = await supabase.from("views").select("*");
         if (!viewErr && viewData && viewData.length > 0) {
           setViews(viewData.length);
+        }
+
+        const { data: sponsorData, error: spErr } = await supabase.from("sponsors").select("*");
+        if (!spErr && sponsorData && sponsorData.length > 0) {
+          setSponsors(sponsorData);
         }
       } catch (err) {
         console.error("Erreur chargement Supabase:", err);
@@ -126,6 +162,37 @@ export default function DashboardPage() {
     setNewLinkIcon("🔗");
   };
 
+  const handleAddSponsor = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    let newItem: Omit<Sponsor, "id">;
+    if (customSponsorName.trim() !== "") {
+      newItem = {
+        name: customSponsorName,
+        logo: "🏢 " + customSponsorName,
+      };
+    } else {
+      const matched = PREDEFINED_SPONSORS.find((s) => s.name === selectedSponsor);
+      newItem = {
+        name: selectedSponsor,
+        logo: matched ? matched.logo : "🏢 " + selectedSponsor,
+      };
+    }
+
+    try {
+      const { data, error } = await supabase.from("sponsors").insert([newItem]).select();
+      if (!error && data && data.length > 0) {
+        setSponsors([...sponsors, data[0]]);
+      } else {
+        setSponsors([...sponsors, { ...newItem, id: Date.now().toString() }]);
+      }
+    } catch (err) {
+      setSponsors([...sponsors, { ...newItem, id: Date.now().toString() }]);
+    }
+
+    setCustomSponsorName("");
+  };
+
   const handleRemovePerformance = async (id: string | undefined, i: number) => {
     if (id) {
       try {
@@ -148,21 +215,29 @@ export default function DashboardPage() {
     setLinks(links.filter((_, idx) => idx !== i));
   };
 
+  const handleRemoveSponsor = async (id: string | number, i: number) => {
+    if (id && typeof id === "string") {
+      try {
+        await supabase.from("sponsors").delete().eq("id", id);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    setSponsors(sponsors.filter((_, idx) => idx !== i));
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
   };
 
-  // Exporter le Média Kit sous forme de PDF stylisé
   const handleGenerateMediaKit = () => {
     const doc = new jsPDF();
 
-    // Fond foncé élégant du Média Kit
     doc.setFillColor(15, 15, 15);
     doc.rect(0, 0, 210, 297, "F");
 
-    // En-tête
-    doc.setTextColor(16, 185, 129); // Emerald
+    doc.setTextColor(16, 185, 129);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(28);
     doc.text("MEDIA KIT ATHLÈTE", 20, 35);
@@ -171,12 +246,10 @@ export default function DashboardPage() {
     doc.setTextColor(160, 160, 160);
     doc.text("Optimisé par BioAthlete.space", 20, 45);
 
-    // Separateur
     doc.setDrawColor(40, 40, 40);
     doc.setLineWidth(1);
     doc.line(20, 52, 190, 52);
 
-    // Informations Générales
     doc.setFontSize(14);
     doc.setTextColor(255, 255, 255);
     doc.text("PROFIL ET PERFORMANCES", 20, 65);
@@ -186,7 +259,6 @@ export default function DashboardPage() {
     doc.text("Nom de l'athlète : Sprinteur N1", 20, 75);
     doc.text("Activités sportives : 100m, 60m", 20, 82);
 
-    // Records & Performances
     doc.setFontSize(14);
     doc.setTextColor(16, 185, 129);
     doc.text("RECORDS HISTORIQUES", 20, 100);
@@ -204,29 +276,6 @@ export default function DashboardPage() {
       currentY += 16;
     });
 
-    // Liens & Réseaux Sociaux
-    doc.setFontSize(14);
-    doc.setTextColor(16, 185, 129);
-    doc.text("LIENS ET RÉSEAUX SOCIAUX", 20, currentY + 10);
-
-    currentY += 22;
-    links.forEach((link) => {
-      doc.setFontSize(11);
-      doc.setTextColor(255, 255, 255);
-      doc.text(`${link.icon} ${link.title}`, 20, currentY);
-
-      doc.setFontSize(10);
-      doc.setTextColor(150, 150, 150);
-      doc.text(`${link.url}`, 20, currentY + 6);
-
-      currentY += 16;
-    });
-
-    // Pied de page
-    doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    doc.text("Ce document est un Média Kit officiel généré par BioAthlete.", 20, 280);
-
     doc.save("Media_Kit_BioAthlete.pdf");
   };
 
@@ -237,6 +286,13 @@ export default function DashboardPage() {
       <div className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
       <div className="relative z-10 max-w-md mx-auto px-5 pt-8 flex flex-col gap-8 min-h-screen">
+        {/* Navigation top bar */}
+        <div className="w-full flex items-center justify-start select-none">
+          <Link href="/" className="flex items-center gap-2 text-gray-400 hover:text-emerald-400 font-bold text-xs uppercase tracking-wider transition-colors duration-300">
+            <span>←</span> Retour à l'accueil
+          </Link>
+        </div>
+
         {/* Top bar with logo and logout */}
         <div className="flex items-center justify-between">
           <div>
@@ -271,6 +327,81 @@ export default function DashboardPage() {
               {views}
             </span>
             <span className="text-[10px] text-gray-500 uppercase font-semibold">Vues</span>
+          </div>
+        </motion.div>
+
+        {/* Section Sponsors */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl select-none"
+        >
+          <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400 mb-4 select-none">
+            Gestion des Sponsors
+          </h2>
+          <form onSubmit={handleAddSponsor} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                Sélectionner une marque majeure
+              </label>
+              <select
+                value={selectedSponsor}
+                onChange={(e) => setSelectedSponsor(e.target.value)}
+                className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white"
+              >
+                {PREDEFINED_SPONSORS.map((sp) => (
+                  <option key={sp.name} value={sp.name}>
+                    {sp.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                Ou ajouter une marque personnalisée
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: Oakley"
+                value={customSponsorName}
+                onChange={(e) => setCustomSponsorName(e.target.value)}
+                className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-emerald-500 font-extrabold text-xs tracking-wider uppercase text-black rounded-xl hover:shadow-[0_4px_16px_rgba(16,185,129,0.25)] transition-all duration-300 mt-1 select-none"
+            >
+              Ajouter Sponsor
+            </button>
+          </form>
+
+          {/* Liste des Sponsors actuels */}
+          <div className="flex flex-col gap-2 mt-4">
+            {sponsors.map((sp, i) => (
+              <div
+                key={sp.id}
+                className="w-full flex items-center justify-between p-3 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all duration-300"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-base p-1.5 bg-neutral-900 border border-white/5 rounded-xl">
+                    {sp.logo}
+                  </span>
+                  <span className="font-semibold text-sm text-white select-none">
+                    {sp.name}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleRemoveSponsor(sp.id, i)}
+                  className="text-gray-600 hover:text-red-400 text-xs font-semibold px-2"
+                >
+                  Supprimer
+                </button>
+              </div>
+            ))}
           </div>
         </motion.div>
 

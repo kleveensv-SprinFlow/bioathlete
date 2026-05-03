@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import {
   LineChart,
@@ -51,6 +52,10 @@ const DEFAULT_ATHLETE = {
     { date: "Août 2024", "100m": 10.05 },
     { date: "Oct 2024", "100m": 9.98 },
   ],
+  sponsors: [
+    { id: 1, name: "Nike", logo: "👟 Nike" },
+    { id: 2, name: "Red Bull", logo: "🥤 Red Bull" },
+  ],
 };
 
 const SectionWrapper = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
@@ -70,16 +75,15 @@ export default function PublicProfile() {
   const [records, setRecords] = useState(DEFAULT_ATHLETE.records);
   const [links, setLinks] = useState(DEFAULT_ATHLETE.links);
   const [evolution, setEvolution] = useState(DEFAULT_ATHLETE.evolution);
+  const [sponsors, setSponsors] = useState(DEFAULT_ATHLETE.sponsors);
 
   useEffect(() => {
     setMounted(true);
 
     async function fetchAndIncrement() {
       try {
-        // Incrémente compteur de vues
         await supabase.from("views").insert([{ count: 1 }]);
 
-        // Charger données Supabase
         const { data: perfData, error: perfErr } = await supabase.from("performances").select("*");
         if (!perfErr && perfData && perfData.length > 0) {
           const mappedRecords = perfData.slice(-2).map((p) => ({
@@ -100,6 +104,11 @@ export default function PublicProfile() {
         if (!linkErr && linkData && linkData.length > 0) {
           setLinks(linkData);
         }
+
+        const { data: spData, error: spErr } = await supabase.from("sponsors").select("*");
+        if (!spErr && spData && spData.length > 0) {
+          setSponsors(spData);
+        }
       } catch (err) {
         console.error("Fetch fallback views/data:", err);
       }
@@ -114,8 +123,18 @@ export default function PublicProfile() {
       <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
-      <div className="relative z-10 max-w-md mx-auto px-5 pt-12 pb-24 flex flex-col items-center gap-8 min-h-screen select-none">
+      <div className="relative z-10 max-w-md mx-auto px-5 pt-8 pb-24 flex flex-col items-center gap-8 min-h-screen select-none">
         
+        {/* Navigation / Top Bar */}
+        <div className="w-full flex items-center justify-between backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 shadow-xl">
+          <Link href="/" className="text-sm font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 hover:opacity-80 transition-opacity">
+            BioAthlete
+          </Link>
+          <Link href="/login" className="px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold rounded-xl text-gray-300 transition-all duration-300">
+            Espace Athlète
+          </Link>
+        </div>
+
         {/* Header Profile Info */}
         <SectionWrapper delay={0.1}>
           <div className="flex flex-col items-center gap-4 text-center">
@@ -149,6 +168,21 @@ export default function PublicProfile() {
           </div>
         </SectionWrapper>
 
+        {/* Section Sponsors (As elegant circle or rectangle badges) */}
+        <SectionWrapper delay={0.15}>
+          <div className="w-full flex flex-wrap items-center justify-center gap-3">
+            {sponsors.map((sp, idx) => (
+              <motion.div
+                key={idx}
+                whileHover={{ scale: 1.05, y: -2 }}
+                className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2 shadow-lg select-none text-xs font-semibold hover:border-emerald-500/20 transition-all duration-300"
+              >
+                <span>{sp.logo}</span>
+              </motion.div>
+            ))}
+          </div>
+        </SectionWrapper>
+
         {/* Stats Glassmorphism Blocks */}
         <SectionWrapper delay={0.2}>
           <div className="grid grid-cols-2 gap-4 w-full">
@@ -175,11 +209,11 @@ export default function PublicProfile() {
 
         {/* Graphique de Performance */}
         <SectionWrapper delay={0.3}>
-          <div className="w-full backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] hover:border-emerald-500/20 transition-colors duration-300 select-none">
+          <div className="w-full h-[300px] backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] hover:border-emerald-500/20 transition-colors duration-300 select-none">
             <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-4 select-none">
               Progression Chronométrique (100m)
             </h3>
-            <div className="w-full h-40">
+            <div className="w-full h-[220px]">
               {mounted && (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={evolution}>
