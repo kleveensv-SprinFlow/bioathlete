@@ -64,15 +64,17 @@ export default function DashboardPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [usernameInput, setUsernameInput] = useState("");
+  const [fullNameInput, setFullNameInput] = useState("");
   const [profSuccess, setProfSuccess] = useState("");
   const [isPremium, setIsPremium] = useState(false);
   const [showStripeModal, setShowStripeModal] = useState(false);
 
   // Profile enhancements
   const [bioInput, setBioInput] = useState("");
-  const [avatarUrlInput, setAvatarUrlInput] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
   const [photoGallery, setPhotoGallery] = useState<{ id: string; url: string; title: string }[]>([]);
-  const [newGalleryPhotoUrl, setNewGalleryPhotoUrl] = useState("");
+  const [newGalleryPhotoFile, setNewGalleryPhotoFile] = useState<File | null>(null);
   const [newGalleryPhotoTitle, setNewGalleryPhotoTitle] = useState("");
 
   const [performances, setPerformances] = useState<Performance[]>([]);
@@ -84,19 +86,19 @@ export default function DashboardPage() {
   // Form states
   const [activeTab, setActiveTab] = useState("profil");
   const [newDate, setNewDate] = useState("");
-  const [newDistance, setNewDistance] = useState("100m");
+  const [newDistance, setNewDistance] = useState(""); // Remplacé par "Discipline"
   const [newTemps, setNewTemps] = useState("");
   const [newComp, setNewComp] = useState("");
 
   const [newLinkTitle, setNewLinkTitle] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
-  const [newLinkIcon, setNewLinkIcon] = useState("🔗");
 
-  const [selectedEquip, setSelectedEquip] = useState("Nike");
+  const [selectedEquip, setSelectedEquip] = useState("Aucun");
+  const [customEquipName, setCustomEquipName] = useState("");
   const [selectedPartner, setSelectedPartner] = useState("Red Bull");
   const [customSponsorName, setCustomSponsorName] = useState("");
 
-  const [newVideoUrl, setNewVideoUrl] = useState("");
+  const [newVideoFile, setNewVideoFile] = useState<File | null>(null);
   const [newVideoTitle, setNewVideoTitle] = useState("");
 
   const [shareText, setShareText] = useState("");
@@ -118,16 +120,18 @@ export default function DashboardPage() {
         // Fetch user profile username
         const { data: profData, error: profErr } = await supabase
           .from("profiles")
-          .select("username, is_premium, bio, avatar_url, photos")
+          .select("username, is_premium, bio, avatar_url, photos, full_name, views_count")
           .eq("user_id", uid)
           .maybeSingle();
 
         if (!profErr && profData) {
           setUsername(profData.username || "");
           setUsernameInput(profData.username || "");
+          setFullNameInput(profData.full_name || "");
           setIsPremium(profData.is_premium || false);
           setBioInput(profData.bio || "");
-          setAvatarUrlInput(profData.avatar_url || "");
+          setAvatarUrl(profData.avatar_url || "");
+          setViews(profData.views_count || 0);
 
           if (profData.photos && Array.isArray(profData.photos)) {
             setPhotoGallery(profData.photos);
@@ -159,16 +163,45 @@ export default function DashboardPage() {
           .eq("user_id", uid);
         if (!vidErr && vidData) setVideos(vidData);
 
-        const { data: viewData, error: viewErr } = await supabase
-          .from("views")
-          .select("*");
-        if (!viewErr && viewData) setViews(viewData.length);
       } catch (err) {
         console.error("Erreur chargement Supabase:", err);
       }
     }
     loadUserAndContent();
   }, [router]);
+
+  const uploadFileToSupabase = async (file: File, folder: string) => {
+    if (!userId) return null;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `${userId}/${folder}/${fileName}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('media').getPublicUrl(filePath);
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      return null;
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    setIsUploading(true);
+
+    const publicUrl = await uploadFileToSupabase(file, 'avatars');
+    if (publicUrl) {
+      setAvatarUrl(publicUrl);
+    }
+    setIsUploading(false);
+  };
 
   const handleSaveProfileInfo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,14 +214,16 @@ export default function DashboardPage() {
         .upsert([{
           user_id: userId,
           username: usernameInput.toLowerCase(),
+          full_name: fullNameInput,
           bio: bioInput,
-          avatar_url: avatarUrlInput
+          avatar_url: avatarUrl
         }])
         .select();
 
       if (!error && data && data.length > 0) {
         setUsername(data[0].username);
         setUsernameInput(data[0].username);
+        setFullNameInput(data[0].full_name || "");
         setProfSuccess("Informations de profil enregistrées avec succès !");
         setTimeout(() => setProfSuccess(""), 3000);
       }
@@ -199,31 +234,37 @@ export default function DashboardPage() {
 
   const handleAddGalleryPhoto = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId || !newGalleryPhotoUrl) return;
+    if (!userId || !newGalleryPhotoFile) return;
 
-    const newPhoto = {
-      id: Date.now().toString(),
-      url: newGalleryPhotoUrl,
-      title: newGalleryPhotoTitle || "Photo"
-    };
+    setIsUploading(true);
+    const publicUrl = await uploadFileToSupabase(newGalleryPhotoFile, 'gallery');
 
-    const updatedPhotos = [...photoGallery, newPhoto];
+    if (publicUrl) {
+      const newPhoto = {
+        id: Date.now().toString(),
+        url: publicUrl,
+        title: newGalleryPhotoTitle || ""
+      };
 
-    try {
-      await supabase
-        .from("profiles")
-        .upsert([{
-          user_id: userId,
-          username: username || "athlete",
-          photos: updatedPhotos
-        }]);
+      const updatedPhotos = [...photoGallery, newPhoto];
 
-      setPhotoGallery(updatedPhotos);
-      setNewGalleryPhotoUrl("");
-      setNewGalleryPhotoTitle("");
-    } catch (err) {
-      console.error(err);
+      try {
+        await supabase
+          .from("profiles")
+          .upsert([{
+            user_id: userId,
+            username: username || "athlete",
+            photos: updatedPhotos
+          }]);
+
+        setPhotoGallery(updatedPhotos);
+        setNewGalleryPhotoFile(null);
+        setNewGalleryPhotoTitle("");
+      } catch (err) {
+        console.error(err);
+      }
     }
+    setIsUploading(false);
   };
 
   const handleRemoveGalleryPhoto = async (photoId: string) => {
@@ -302,10 +343,21 @@ export default function DashboardPage() {
       return;
     }
 
+    // Détection automatique de l'icône/logo
+    let detectedIcon = "🔗";
+    const urlLower = newLinkUrl.toLowerCase();
+    if (urlLower.includes("instagram.com")) detectedIcon = "📸";
+    else if (urlLower.includes("tiktok.com")) detectedIcon = "🎵";
+    else if (urlLower.includes("youtube.com") || urlLower.includes("youtu.be")) detectedIcon = "▶️";
+    else if (urlLower.includes("facebook.com")) detectedIcon = "📘";
+    else if (urlLower.includes("x.com") || urlLower.includes("twitter.com")) detectedIcon = "𝕏";
+    else if (urlLower.includes("athle.fr") || urlLower.includes("ffa")) detectedIcon = "🏃";
+    else if (urlLower.includes("worldathletics.org")) detectedIcon = "🌍";
+
     const newItem: Omit<SocialLink, "id"> = {
       title: newLinkTitle,
       url: newLinkUrl,
-      icon: newLinkIcon || "🔗",
+      icon: detectedIcon,
       user_id: userId,
     };
 
@@ -322,21 +374,12 @@ export default function DashboardPage() {
 
     setNewLinkTitle("");
     setNewLinkUrl("");
-    setNewLinkIcon("🔗");
   };
 
   // Step 1: Handling Category and exclusivity for Equipment Manufacturer (Équipementier)
   const handleAddEquipementier = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId) return;
-
-    const matched = PREDEFINED_EQUIPEMENTIERS.find((eq) => eq.name === selectedEquip);
-    const newItem: Omit<Sponsor, "id"> = {
-      name: selectedEquip,
-      logo: matched ? matched.logo : "🏢 " + selectedEquip,
-      category: "Équipementier",
-      user_id: userId,
-    };
 
     try {
       // Exclusivity: Remove all previous "Équipementier" category sponsors for the user
@@ -346,7 +389,17 @@ export default function DashboardPage() {
         .eq("user_id", userId)
         .eq("category", "Équipementier");
 
-      const { data, error } = await supabase.from("sponsors").insert([newItem]).select();
+      if (selectedEquip !== "Aucun") {
+        const sponsorName = selectedEquip === "Autre" ? customEquipName : selectedEquip;
+        const matched = PREDEFINED_EQUIPEMENTIERS.find((eq) => eq.name === sponsorName);
+        const newItem: Omit<Sponsor, "id"> = {
+          name: sponsorName,
+          logo: matched ? matched.logo : "🏢 " + sponsorName,
+          category: "Équipementier",
+          user_id: userId,
+        };
+        await supabase.from("sponsors").insert([newItem]);
+      }
 
       // Refresh list
       const { data: spData } = await supabase
@@ -397,27 +450,40 @@ export default function DashboardPage() {
 
   const handleAddVideo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newVideoUrl || !userId) return;
+    if (!userId || !newVideoFile) return;
 
-    const newItem: Omit<Video, "id"> = {
-      url: newVideoUrl,
-      title: newVideoTitle || "Vidéo d'athlétisme",
-      user_id: userId,
-    };
-
-    try {
-      const { data, error } = await supabase.from("videos").insert([newItem]).select();
-      if (!error && data && data.length > 0) {
-        setVideos([...videos, data[0]]);
-      } else {
-        setVideos([...videos, { ...newItem, id: Date.now().toString() }]);
-      }
-    } catch (err) {
-      setVideos([...videos, { ...newItem, id: Date.now().toString() }]);
+    // Limitation 1 vidéo pour les comptes gratuits, 3 max sinon
+    const maxVideos = isPremium ? 3 : 1;
+    if (videos.length >= maxVideos) {
+      alert(`Limite atteinte : Vous pouvez ajouter un maximum de ${maxVideos} vidéo(s).`);
+      return;
     }
 
-    setNewVideoUrl("");
-    setNewVideoTitle("");
+    setIsUploading(true);
+    const publicUrl = await uploadFileToSupabase(newVideoFile, 'videos');
+
+    if (publicUrl) {
+      const newItem: Omit<Video, "id"> = {
+        url: publicUrl,
+        title: newVideoTitle || "Vidéo d'athlétisme",
+        user_id: userId,
+      };
+
+      try {
+        const { data, error } = await supabase.from("videos").insert([newItem]).select();
+        if (!error && data && data.length > 0) {
+          setVideos([...videos, data[0]]);
+        } else {
+          setVideos([...videos, { ...newItem, id: Date.now().toString() }]);
+        }
+      } catch (err) {
+        setVideos([...videos, { ...newItem, id: Date.now().toString() }]);
+      }
+
+      setNewVideoFile(null);
+      setNewVideoTitle("");
+    }
+    setIsUploading(false);
   };
 
   const handleShareProfile = () => {
@@ -515,10 +581,19 @@ export default function DashboardPage() {
 
       <div className="relative z-10 max-w-md mx-auto px-5 pt-8 flex flex-col gap-8 min-h-screen">
         {/* Navigation top bar */}
-        <div className="w-full flex items-center justify-start select-none">
+        <div className="w-full flex items-center justify-between select-none">
           <Link href="/" className="flex items-center gap-2 text-gray-400 hover:text-emerald-400 font-bold text-xs uppercase tracking-wider transition-colors duration-300">
             <span>←</span> Retour à l&apos;accueil
           </Link>
+          {username && (
+            <Link
+              href={`/u/${username}`}
+              target="_blank"
+              className="flex items-center gap-2 text-emerald-400 hover:text-white font-bold text-xs uppercase tracking-wider transition-colors duration-300"
+            >
+              Voir mon profil public <span>↗</span>
+            </Link>
+          )}
         </div>
 
         {/* Top bar with logo and logout */}
@@ -662,20 +737,39 @@ export default function DashboardPage() {
 
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    URL Photo de profil
+                    Nom et Prénom
                   </label>
                   <input
-                    type="url"
-                    placeholder="https://exemple.com/mon-image.jpg"
-                    value={avatarUrlInput}
-                    onChange={(e) => setAvatarUrlInput(e.target.value)}
+                    type="text"
+                    placeholder="Ex: Jean Dupont"
+                    value={fullNameInput}
+                    onChange={(e) => setFullNameInput(e.target.value)}
                     className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
                   />
-                  {avatarUrlInput && (
-                    <div className="mt-2 w-16 h-16 rounded-full overflow-hidden border border-emerald-500/30">
-                      <img src={avatarUrlInput} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.src = 'https://api.dicebear.com/7.x/pixel-art/svg?seed=fallback'} />
-                    </div>
-                  )}
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Photo de profil (Upload)
+                  </label>
+                  <div className="flex items-center gap-4">
+                    {avatarUrl ? (
+                      <div className="w-16 h-16 rounded-full overflow-hidden border border-emerald-500/30 flex-shrink-0">
+                        <img src={avatarUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.src = 'https://api.dicebear.com/7.x/pixel-art/svg?seed=fallback'} />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-full overflow-hidden border border-white/10 bg-neutral-900 flex items-center justify-center text-xl flex-shrink-0">
+                        👤
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      onChange={handleAvatarUpload}
+                      disabled={isUploading}
+                      className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-white/10 file:text-emerald-400 hover:file:bg-white/20 transition-all cursor-pointer"
+                    />
+                  </div>
                 </div>
 
                 {profSuccess && (
@@ -734,16 +828,16 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                      Distance
+                      Discipline (ex: 100m, Saut en longueur...)
                     </label>
-                    <select
+                    <input
+                      type="text"
+                      placeholder="100m"
                       value={newDistance}
                       onChange={(e) => setNewDistance(e.target.value)}
-                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white"
-                    >
-                      <option value="60m">60m</option>
-                      <option value="100m">100m</option>
-                    </select>
+                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                      required
+                    />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
@@ -841,16 +935,16 @@ export default function DashboardPage() {
             {/* Galerie Photos */}
             <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl select-none">
               <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400 mb-4 select-none">
-                Galerie Photos
+                Photos
               </h2>
               <form onSubmit={handleAddGalleryPhoto} className="flex flex-col gap-4 mb-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Titre de la photo
+                    Titre de la photo (Facultatif)
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: Finale 100m"
+                    placeholder="Ex: Meeting de Paris"
                     value={newGalleryPhotoTitle}
                     onChange={(e) => setNewGalleryPhotoTitle(e.target.value)}
                     className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-xs text-white placeholder-gray-600"
@@ -858,22 +952,22 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    URL de l&apos;image
+                    Fichier Photo (Upload)
                   </label>
                   <input
-                    type="url"
-                    placeholder="https://..."
-                    value={newGalleryPhotoUrl}
-                    onChange={(e) => setNewGalleryPhotoUrl(e.target.value)}
-                    className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-xs text-white placeholder-gray-600"
+                    type="file"
+                    accept="image/png, image/jpeg, image/webp"
+                    onChange={(e) => setNewGalleryPhotoFile(e.target.files ? e.target.files[0] : null)}
+                    className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-white/10 file:text-emerald-400 hover:file:bg-white/20 transition-all cursor-pointer"
                     required
                   />
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-3 bg-white/10 hover:bg-white/20 font-extrabold text-xs tracking-wider uppercase text-white rounded-xl transition-all duration-300"
+                  disabled={isUploading}
+                  className="w-full py-3 bg-white/10 hover:bg-white/20 font-extrabold text-xs tracking-wider uppercase text-white rounded-xl transition-all duration-300 disabled:opacity-50"
                 >
-                  Ajouter à la galerie
+                  {isUploading ? "Importation..." : "Ajouter la photo"}
                 </button>
               </form>
 
@@ -895,16 +989,17 @@ export default function DashboardPage() {
             {/* Vidéos */}
             <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl select-none">
               <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400 mb-4 select-none">
-                Vidéos YouTube/Vimeo
+                Vidéos (Upload direct)
               </h2>
+              <p className="text-[10px] text-gray-400 mb-4">Max {isPremium ? "3" : "1"} vidéo{isPremium ? "s" : ""} d'une minute max.</p>
               <form onSubmit={handleAddVideo} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Titre
+                    Titre de la vidéo (Facultatif)
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: Finale 100m"
+                    placeholder="Ex: Présentation saison"
                     value={newVideoTitle}
                     onChange={(e) => setNewVideoTitle(e.target.value)}
                     className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-xs text-white"
@@ -912,22 +1007,22 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    URL
+                    Fichier Vidéo (.mp4, .mov)
                   </label>
                   <input
-                    type="url"
-                    placeholder="https://youtube.com/..."
-                    value={newVideoUrl}
-                    onChange={(e) => setNewVideoUrl(e.target.value)}
-                    className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-xs text-white"
+                    type="file"
+                    accept="video/mp4, video/quicktime"
+                    onChange={(e) => setNewVideoFile(e.target.files ? e.target.files[0] : null)}
+                    className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-white/10 file:text-emerald-400 hover:file:bg-white/20 transition-all cursor-pointer"
                     required
                   />
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-3 bg-white/10 hover:bg-white/20 font-extrabold text-xs tracking-wider uppercase text-white rounded-xl transition-all duration-300"
+                  disabled={isUploading}
+                  className="w-full py-3 bg-white/10 hover:bg-white/20 font-extrabold text-xs tracking-wider uppercase text-white rounded-xl transition-all duration-300 disabled:opacity-50"
                 >
-                  Ajouter Vidéo
+                  {isUploading ? "Importation vidéo..." : "Ajouter Vidéo"}
                 </button>
               </form>
 
@@ -965,18 +1060,6 @@ export default function DashboardPage() {
                       onChange={(e) => setNewLinkTitle(e.target.value)}
                       className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-xs text-white"
                       required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                      Icône (Emoji)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="📸"
-                      value={newLinkIcon}
-                      onChange={(e) => setNewLinkIcon(e.target.value)}
-                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-xs text-white"
                     />
                   </div>
                 </div>
@@ -1042,15 +1125,31 @@ export default function DashboardPage() {
                   </label>
                   <select
                     value={selectedEquip}
-                    onChange={(e) => setSelectedEquip(e.target.value)}
-                    className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white"
+                    onChange={(e) => {
+                      setSelectedEquip(e.target.value);
+                      if (e.target.value !== "Autre") setCustomEquipName("");
+                    }}
+                    className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white mb-2"
                   >
+                    <option value="Aucun">Aucun</option>
                     {PREDEFINED_EQUIPEMENTIERS.map((eq) => (
                       <option key={eq.name} value={eq.name}>
                         {eq.name}
                       </option>
                     ))}
+                    <option value="Autre">Autre (personnalisé)</option>
                   </select>
+
+                  {selectedEquip === "Autre" && (
+                    <input
+                      type="text"
+                      placeholder="Nom de l'équipementier..."
+                      value={customEquipName}
+                      onChange={(e) => setCustomEquipName(e.target.value)}
+                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white mt-1"
+                      required
+                    />
+                  )}
                 </div>
                 <button
                   type="submit"
