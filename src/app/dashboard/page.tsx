@@ -251,7 +251,7 @@ export default function DashboardPage() {
           full_name: newFullName,
           bio: bioInput,
           avatar_url: avatarUrl
-        }])
+        }], { onConflict: "user_id" })
         .select();
 
       if (!error && data && data.length > 0) {
