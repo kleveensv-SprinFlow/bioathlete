@@ -287,6 +287,8 @@ export default function DashboardPage() {
     }
   };
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const handleUpgradePremium = async () => {
     if (!userId) return;
     try {
@@ -301,6 +303,29 @@ export default function DashboardPage() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleUpgradePremiumReal = async () => {
+    if (!userId) return;
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: userId, email: "kleveensv@gmail.com" }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        await handleUpgradePremium();
+      }
+    } catch (error) {
+      console.error("Erreur Stripe:", error);
+      await handleUpgradePremium();
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1308,8 +1333,8 @@ export default function DashboardPage() {
 
               <div className="flex flex-col gap-2 mt-2">
                 <button
-                  onClick={() => {
-                    handleUpgradePremium();
+                  onClick={async () => {
+                    await handleUpgradePremiumReal();
                     setShowStripeModal(false);
                   }}
                   className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300"
