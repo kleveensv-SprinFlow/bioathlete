@@ -211,17 +211,18 @@ export default function DashboardPage() {
 
   const handleSaveProfileInfo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!usernameInput || !userId) return;
+    if (!userId) return;
     setProfSuccess("");
 
     const newFullName = `${firstNameInput.trim()} ${lastNameInput.trim()}`.trim() || fullNameInput;
+    const autoUsername = username || (firstNameInput.trim() + "-" + lastNameInput.trim()).toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-") || "athlete";
 
     try {
       const { data, error } = await supabase
         .from("profiles")
         .upsert([{
           user_id: userId,
-          username: usernameInput.toLowerCase(),
+          username: autoUsername,
           full_name: newFullName,
           bio: bioInput,
           avatar_url: avatarUrl
@@ -637,7 +638,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300">
-              Dashboard
+              Bienvenue {firstNameInput || "Athlète"}
             </h1>
             <p className="text-gray-400 text-xs">Gestion du profil BioAthlete</p>
           </div>
@@ -762,28 +763,6 @@ export default function DashboardPage() {
                       className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
                     />
                   </div>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Identifiant unique (URL)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: bolt-95"
-                    value={usernameInput}
-                    onChange={(e) => setUsernameInput(e.target.value)}
-                    className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
-                    required
-                  />
-                  {username && (
-                    <p className="text-[10px] text-gray-500 select-none mt-1">
-                      Accessible sur :{" "}
-                      <Link href={`/u/${username}`} target="_blank" className="text-emerald-400 hover:underline">
-                        /u/{username}
-                      </Link>
-                    </p>
-                  )}
                 </div>
 
                 <div className="flex flex-col gap-1">
