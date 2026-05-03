@@ -9,8 +9,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const resolvedParams = await params;
   const username = resolvedParams.username || "athlete";
 
-  const title = `BioAthlete | Profil de ${username}`;
-  const description = `Découvrez le profil BioAthlete de ${username} - Athlète de haut niveau (100m, 60m)`;
+  const title = `${username} | Sprinteur 100m`;
+  const description = `Découvrez le profil BioAthlete de ${username} - Sprinteur 100m`;
 
   return {
     title,
@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           url: "https://bioathlete.space/og-image.png",
           width: 1200,
           height: 630,
-          alt: `BioAthlete | ${username}`,
+          alt: `${username} | Sprinteur 100m`,
         },
       ],
     },
