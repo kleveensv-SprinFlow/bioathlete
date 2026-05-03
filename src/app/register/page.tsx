@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -15,12 +15,16 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Modal states
+  const [activeModal, setActiveModal] = useState<"cgu" | "privacy" | null>(null);
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
+    // Absolute blocking Rule 2 & Rule 5
     if (!acceptTerms) {
-      setError("Vous devez accepter les CGU et la Politique de Confidentialité.");
+      setError("Vous devez obligatoirement accepter les CGU et la Politique de Confidentialité avant de continuer.");
       return;
     }
 
@@ -52,7 +56,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500 selection:text-black select-none">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500 selection:text-black select-none relative overflow-hidden">
       {/* Background neon glows */}
       <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[140px] pointer-events-none z-0"></div>
       <div className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none z-0"></div>
@@ -103,7 +107,7 @@ export default function RegisterPage() {
           </div>
         </motion.div>
 
-        {/* Sales Landing Features and Registration Form */}
+        {/* Form and CTA */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -148,7 +152,7 @@ export default function RegisterPage() {
               />
             </div>
 
-            {/* Step 2: Consent Checkbox mandatory */}
+            {/* Consent Checkbox and buttons opening Modals */}
             <div className="flex items-start gap-2.5 px-1 py-1">
               <input
                 id="terms"
@@ -157,20 +161,28 @@ export default function RegisterPage() {
                 onChange={(e) => setAcceptTerms(e.target.checked)}
                 className="w-4 h-4 mt-0.5 rounded border border-white/20 bg-black checked:bg-emerald-500 focus:ring-0 transition-all cursor-pointer"
               />
-              <label htmlFor="terms" className="text-[10px] text-gray-400 font-medium leading-relaxed select-none cursor-pointer">
+              <label htmlFor="terms" className="text-[10px] text-gray-400 font-medium leading-relaxed select-none">
                 J&apos;accepte les{" "}
-                <Link href="/cgu" target="_blank" className="text-emerald-400 hover:underline font-bold">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal("cgu")}
+                  className="text-emerald-400 hover:underline font-bold transition-all cursor-pointer"
+                >
                   CGU
-                </Link>{" "}
+                </button>{" "}
                 et la{" "}
-                <Link href="/confidentialite" target="_blank" className="text-emerald-400 hover:underline font-bold">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal("privacy")}
+                  className="text-emerald-400 hover:underline font-bold transition-all cursor-pointer"
+                >
                   Politique de Confidentialité
-                </Link>.
+                </button>.
               </label>
             </div>
 
             {error && (
-              <p className="text-red-400 text-xs font-semibold px-1 py-1 animate-pulse select-none">
+              <p className="text-red-400 border border-red-500/30 bg-red-500/10 text-xs font-semibold px-3 py-2 rounded-xl animate-pulse select-none leading-relaxed">
                 {error}
               </p>
             )}
@@ -195,6 +207,130 @@ export default function RegisterPage() {
         </motion.div>
 
       </div>
+
+      {/* MODALS */}
+      <AnimatePresence>
+        {activeModal === "cgu" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-6 select-none"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="max-w-md w-full backdrop-blur-xl bg-white/10 border border-white/20 p-6 rounded-3xl shadow-2xl flex flex-col gap-4 max-h-[85vh] overflow-y-auto select-none"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 className="text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 uppercase">
+                  CGU & Conditions Protectrices
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="text-gray-400 hover:text-emerald-400 font-bold transition-all cursor-pointer text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-4 text-xs text-gray-300 leading-relaxed overflow-y-auto select-none">
+                <section className="flex flex-col gap-1">
+                  <h4 className="text-emerald-400 font-bold">1. Clause de véracité</h4>
+                  <p>
+                    L&apos;utilisateur s&apos;engage formellement sur l&apos;exactitude des performances et chronos renseignés. BioAthlete ne procède à aucune vérification manuelle et décline toute responsabilité pour toute déclaration erronée.
+                  </p>
+                </section>
+
+                <section className="flex flex-col gap-1">
+                  <h4 className="text-emerald-400 font-bold">2. Clause de propriété intellectuelle</h4>
+                  <p>
+                    L&apos;utilisateur est l&apos;unique responsable des contenus et s&apos;engage à posséder l&apos;ensemble des droits de diffusion et d&apos;auteur pour les images, vidéos et fichiers qu&apos;il publie sur sa vitrine digitale.
+                  </p>
+                </section>
+
+                <section className="flex flex-col gap-1">
+                  <h4 className="text-emerald-400 font-bold">3. Clause de décharge de responsabilité</h4>
+                  <p>
+                    BioAthlete agit uniquement comme un outil de visibilité et ne garantit aucun contrat de sponsoring ou de partenariat avec des marques sportives ou des tiers. L&apos;utilisation de nos fonctionnalités gratuites ou premium n&apos;ouvre droit à aucune contrepartie financière.
+                  </p>
+                </section>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 font-black tracking-wide text-xs uppercase text-black rounded-xl transition-all duration-300 mt-2 select-none"
+              >
+                Fermer et revenir
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {activeModal === "privacy" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-6 select-none"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="max-w-md w-full backdrop-blur-xl bg-white/10 border border-white/20 p-6 rounded-3xl shadow-2xl flex flex-col gap-4 max-h-[85vh] overflow-y-auto select-none"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 className="text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 uppercase">
+                  Politique de Confidentialité
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="text-gray-400 hover:text-emerald-400 font-bold transition-all cursor-pointer text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-4 text-xs text-gray-300 leading-relaxed overflow-y-auto select-none">
+                <section className="flex flex-col gap-1">
+                  <h4 className="text-emerald-400 font-bold">1. Stockage sécurisé (Supabase)</h4>
+                  <p>
+                    L&apos;ensemble de vos données d&apos;authentification et d&apos;activité sont enregistrées, sécurisées et chiffrées de bout en bout sur notre infrastructure technique partenaire **Supabase**. Les serveurs répondent aux normes internationales de protection des données (RGPD).
+                  </p>
+                </section>
+
+                <section className="flex flex-col gap-1">
+                  <h4 className="text-emerald-400 font-bold">2. Absence de cession commerciale</h4>
+                  <p>
+                    BioAthlete s&apos;interdit formellement de revendre, louer ou céder vos données personnelles à des tiers à des fins de prospection publicitaire ou marketing.
+                  </p>
+                </section>
+
+                <section className="flex flex-col gap-1">
+                  <h4 className="text-emerald-400 font-bold">3. Vos droits RGPD de suppression</h4>
+                  <p>
+                    Vous disposez d&apos;un droit d&apos;accès, de rectification et de suppression totale de votre compte directement à partir des outils disponibles dans votre Dashboard.
+                  </p>
+                </section>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 font-black tracking-wide text-xs uppercase text-black rounded-xl transition-all duration-300 mt-2 select-none"
+              >
+                Fermer et revenir
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
