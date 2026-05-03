@@ -32,18 +32,18 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const { data, error: registerError } = await supabase.auth.signUp({
-        email,
-        password,
+      const response = await supabase.auth.signUp({
+        email: email.trim(),
+        password: password,
       });
 
-      if (registerError) {
-        setError(registerError.message);
-      } else if (data.user) {
-        // Create profile on Step 1
+      if (response.error) {
+        setError(response.error.message);
+      } else if (response.data?.user) {
+        // Check if user already exists
         await supabase.from("profiles").insert([
           {
-            user_id: data.user.id,
+            user_id: response.data.user.id,
             username: "sprint-mich-" + Date.now().toString().slice(-4),
             is_premium: false,
           }
@@ -52,8 +52,12 @@ export default function RegisterPage() {
       } else {
         setError("Une erreur inattendue est survenue.");
       }
-    } catch (err) {
-      setError("Erreur lors de l'inscription.");
+    } catch (err: any) {
+      console.error("Erreur signUp Supabase:", err);
+      setError(
+        err?.message ||
+        "Erreur serveur d'authentification ou connexion réseau interrompue. Veuillez réessayer."
+      );
     } finally {
       setLoading(false);
     }
