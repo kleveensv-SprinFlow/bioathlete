@@ -112,6 +112,7 @@ export default function DashboardPage() {
   const [newDistance, setNewDistance] = useState(""); // Remplacé par "Discipline"
   const [newTemps, setNewTemps] = useState("");
   const [newComp, setNewComp] = useState("");
+  const [newWind, setNewWind] = useState("");
   const [selectedDisciplineCategory, setSelectedDisciplineCategory] = useState("Sprint & Haies");
   const [customDiscipline, setCustomDiscipline] = useState("");
 
@@ -395,11 +396,13 @@ export default function DashboardPage() {
     const finalDistance = newDistance === "Autre" ? customDiscipline : newDistance;
     if (!finalDistance) return;
 
+    const finalComp = newWind ? `${newComp || "Meeting"} (Vent: ${newWind} m/s)` : (newComp || "Meeting");
+
     const newItem: Performance = {
       date: newDate,
       distance: finalDistance,
       temps: newTemps,
-      competition: newComp || "Meeting",
+      competition: finalComp,
       user_id: userId,
     };
 
@@ -417,6 +420,7 @@ export default function DashboardPage() {
     setNewDate("");
     setNewTemps("");
     setNewComp("");
+    setNewWind("");
     setCustomDiscipline("");
   };
 
@@ -1005,6 +1009,22 @@ export default function DashboardPage() {
                     />
                   </div>
                 </div>
+
+                {["Sprint & Haies", "Sauts"].includes(selectedDisciplineCategory) && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1 flex justify-between select-none">
+                      <span>Vent (m/s)</span>
+                      <span className="text-[9px] text-gray-600 font-normal lowercase tracking-normal">Optionnel</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: +1.2 ou -0.5"
+                      value={newWind}
+                      onChange={(e) => setNewWind(e.target.value)}
+                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                    />
+                  </div>
+                )}
 
                 <button
                   type="submit"
