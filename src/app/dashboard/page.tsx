@@ -608,25 +608,19 @@ export default function DashboardPage() {
       <div className="relative z-10 max-w-md mx-auto px-5 pt-8 flex flex-col gap-8 min-h-screen">
         {/* Navigation top bar */}
         <div className="w-full flex items-center justify-between gap-3 select-none">
-          {username ? (
-            <Link
-              href={`/u/${username}`}
-              target="_blank"
-              className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider text-center rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 shadow-lg select-none"
-            >
-              Voir ma page <span>↗</span>
-            </Link>
-          ) : (
-            <span className="flex-1 text-gray-500 font-bold text-xs">Aperçu non disponible</span>
-          )}
-          {username && (
-            <button
-              onClick={() => setShowShareModal(true)}
-              className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider text-center rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 select-none"
-            >
-              🔗 Partager ma page
-            </button>
-          )}
+          <Link
+            href={`/u/${username || usernameInput || "athlete"}`}
+            target="_blank"
+            className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider text-center rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 shadow-lg select-none"
+          >
+            Voir ma page <span>↗</span>
+          </Link>
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider text-center rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 select-none"
+          >
+            🔗 Partager ma page
+          </button>
         </div>
 
         {/* Top bar with logo and logout */}
@@ -1388,7 +1382,7 @@ export default function DashboardPage() {
                     <input
                       type="text"
                       readOnly
-                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${username}`}
+                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${username || usernameInput || "athlete"}`}
                       className="w-full p-3 bg-neutral-950 border border-white/10 focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white rounded-xl select-all"
                     />
                   </div>
@@ -1399,7 +1393,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => {
                     if (typeof window !== "undefined") {
-                      navigator.clipboard.writeText(`${window.location.origin}/u/${username}`);
+                      navigator.clipboard.writeText(`${window.location.origin}/u/${username || usernameInput || "athlete"}`);
                       setShareText("Lien copié dans le presse-papier !");
                       setTimeout(() => setShareText(""), 3000);
                       setShowShareModal(false);
