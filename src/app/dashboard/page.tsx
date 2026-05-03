@@ -58,6 +58,26 @@ const PREDEFINED_PARTENAIRES = [
   { name: "Yazio", logo: "🥗 Yazio" },
 ];
 
+const ATHLETIC_DISCIPLINES: { [key: string]: string[] } = {
+  "Sprint & Haies": [
+    "60m", "100m", "200m", "400m",
+    "60m Haies", "100m Haies", "110m Haies", "400m Haies"
+  ],
+  "Demi-fond & Fond": [
+    "800m", "1500m", "3000m", "5000m", "10000m", "3000m Steeple"
+  ],
+  "Sauts": [
+    "Saut en hauteur", "Saut à la perche", "Saut en longueur", "Triple saut"
+  ],
+  "Lancers": [
+    "Lancer du poids", "Lancer du disque", "Lancer du marteau", "Lancer du javelot"
+  ],
+  "Épreuves Combinées / Marche": [
+    "Pentathlon", "Heptathlon", "Décathlon",
+    "10km Marche", "20km Marche"
+  ]
+};
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -92,6 +112,8 @@ export default function DashboardPage() {
   const [newDistance, setNewDistance] = useState(""); // Remplacé par "Discipline"
   const [newTemps, setNewTemps] = useState("");
   const [newComp, setNewComp] = useState("");
+  const [selectedDisciplineCategory, setSelectedDisciplineCategory] = useState("Sprint & Haies");
+  const [customDiscipline, setCustomDiscipline] = useState("");
 
   const [newLinkTitle, setNewLinkTitle] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
@@ -370,9 +392,12 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!newDate || !newTemps || !userId) return;
 
+    const finalDistance = newDistance === "Autre" ? customDiscipline : newDistance;
+    if (!finalDistance) return;
+
     const newItem: Performance = {
       date: newDate,
-      distance: newDistance,
+      distance: finalDistance,
       temps: newTemps,
       competition: newComp || "Meeting",
       user_id: userId,
@@ -392,6 +417,7 @@ export default function DashboardPage() {
     setNewDate("");
     setNewTemps("");
     setNewComp("");
+    setCustomDiscipline("");
   };
 
   const handleAddLink = async (e: React.FormEvent) => {
@@ -880,23 +906,67 @@ export default function DashboardPage() {
                 Ajouter une performance
               </h2>
               <form onSubmit={handleAddPerformance} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Catégorie de discipline
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 p-1 bg-neutral-900/50 border border-white/5 rounded-2xl">
+                    {Object.keys(ATHLETIC_DISCIPLINES).map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDisciplineCategory(cat);
+                          setNewDistance("");
+                        }}
+                        className={`flex-1 min-w-[90px] px-2.5 py-2 text-[9px] font-black tracking-wider uppercase rounded-xl transition-all duration-300 select-none ${
+                          selectedDisciplineCategory === cat
+                            ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
+                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                      Discipline (ex: 100m, Saut en longueur...)
+                      Discipline
                     </label>
-                    <input
-                      type="text"
-                      placeholder="100m"
+                    <select
                       value={newDistance}
-                      onChange={(e) => setNewDistance(e.target.value)}
-                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                      onChange={(e) => {
+                        setNewDistance(e.target.value);
+                        if (e.target.value !== "Autre") {
+                          setCustomDiscipline("");
+                        }
+                      }}
+                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white"
                       required
-                    />
+                    >
+                      <option value="">-- Choisir --</option>
+                      {ATHLETIC_DISCIPLINES[selectedDisciplineCategory]?.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                      <option value="Autre">Autre (personnalisé)</option>
+                    </select>
+                    {newDistance === "Autre" && (
+                      <input
+                        type="text"
+                        placeholder="Ex: 1000m"
+                        value={customDiscipline}
+                        onChange={(e) => setCustomDiscipline(e.target.value)}
+                        className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600 mt-1"
+                        required
+                      />
+                    )}
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                      Chrono (ex: 9.98)
+                      Chrono / Perf
                     </label>
                     <input
                       type="text"
