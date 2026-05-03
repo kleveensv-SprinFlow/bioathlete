@@ -974,7 +974,16 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* IP rights reminder mention */}
+        <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 text-center mt-2 shadow-xl select-none">
+          <p className="text-[10px] text-gray-500 font-semibold leading-relaxed">
+            Rappel : L&apos;athlète s&apos;engage à posséder l&apos;ensemble des droits de diffusion et d&apos;auteur pour les images, vidéos et contenus qu&apos;il publie sur son profil.
+          </p>
+        </div>
+
       </div>
     </div>
   );
 }
+
+

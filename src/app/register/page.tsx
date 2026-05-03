@@ -11,12 +11,19 @@ export default function RegisterPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!acceptTerms) {
+      setError("Vous devez accepter les CGU et la Politique de Confidentialité.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -50,6 +57,7 @@ export default function RegisterPage() {
       <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[140px] pointer-events-none z-0"></div>
       <div className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none z-0"></div>
 
+      {/* Main Container */}
       <div className="relative z-10 max-w-lg mx-auto px-5 py-12 flex flex-col items-center gap-10">
         
         {/* Mock Profile: Sprint-Mich with Pixel avatar */}
@@ -138,6 +146,27 @@ export default function RegisterPage() {
                 className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
                 required
               />
+            </div>
+
+            {/* Step 2: Consent Checkbox mandatory */}
+            <div className="flex items-start gap-2.5 px-1 py-1">
+              <input
+                id="terms"
+                type="checkbox"
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
+                className="w-4 h-4 mt-0.5 rounded border border-white/20 bg-black checked:bg-emerald-500 focus:ring-0 transition-all cursor-pointer"
+              />
+              <label htmlFor="terms" className="text-[10px] text-gray-400 font-medium leading-relaxed select-none cursor-pointer">
+                J&apos;accepte les{" "}
+                <Link href="/cgu" target="_blank" className="text-emerald-400 hover:underline font-bold">
+                  CGU
+                </Link>{" "}
+                et la{" "}
+                <Link href="/confidentialite" target="_blank" className="text-emerald-400 hover:underline font-bold">
+                  Politique de Confidentialité
+                </Link>.
+              </label>
             </div>
 
             {error && (
