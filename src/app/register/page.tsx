@@ -38,7 +38,13 @@ export default function RegisterPage() {
       });
 
       if (response.error) {
-        setError(response.error.message);
+        if (response.error.message.toLowerCase().includes("confirmation mail")) {
+          setError(
+            "Erreur Brevo / Supabase SMTP : Impossible d'envoyer l'e-mail de confirmation. Veuillez vérifier sur Brevo que l'adresse 'bioathletethics@gmail.com' est bien un expéditeur autorisé (Sender) et que vous avez utilisé la Master Key SMTP (et non la clé API standard)."
+          );
+        } else {
+          setError(response.error.message);
+        }
       } else if (response.data?.user) {
         // Create profile
         await supabase.from("profiles").insert([
@@ -59,9 +65,13 @@ export default function RegisterPage() {
       }
     } catch (err: any) {
       console.error("Erreur signUp Supabase:", err);
-      setError(
-        "Erreur 500 de Supabase. Cela signifie généralement que l'envoi d'e-mails (SMTP) est désactivé sur votre Dashboard Supabase. Désactivez l'option 'Confirm Email' dans Auth -> Providers -> Email sur votre console Supabase."
-      );
+      if (err?.message?.toLowerCase().includes("confirmation mail")) {
+        setError(
+          "Erreur Brevo / Supabase SMTP : Impossible d'envoyer l'e-mail de confirmation. Veuillez vérifier sur Brevo que l'adresse 'bioathletethics@gmail.com' est bien un expéditeur autorisé (Sender) et que vous avez utilisé la Master Key SMTP (et non la clé API standard)."
+        );
+      } else {
+        setError("Erreur serveur ou de connexion réseau lors de l'inscription.");
+      }
     } finally {
       setLoading(false);
     }
