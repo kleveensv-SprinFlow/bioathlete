@@ -45,11 +45,6 @@ interface EvolutionPoint {
   "100m": number;
 }
 
-const DEFAULT_PHOTOS = [
-  { title: "Entraînement", url: "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=400&q=80" },
-  { title: "Course", url: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=400&q=80" },
-  { title: "Stade", url: "https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=400&q=80" },
-];
 
 const StaggeredWrapper = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
   <motion.div
@@ -71,6 +66,7 @@ export default function PublicAthleteProfile() {
   const [profileNotFound, setProfileNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const [profileData, setProfileData] = useState<{ bio?: string; avatar_url?: string; photos?: { id: string; url: string; title: string }[] }>({});
   const [records, setRecords] = useState<Record[]>([]);
   const [links, setLinks] = useState<SocialLink[]>([]);
   const [evolution, setEvolution] = useState<EvolutionPoint[]>([]);
@@ -85,8 +81,6 @@ export default function PublicAthleteProfile() {
   });
 
   useEffect(() => {
-    setMounted(true);
-
     async function fetchAthleteByUsername() {
       if (!username) {
         setLoading(false);
@@ -99,7 +93,7 @@ export default function PublicAthleteProfile() {
         // Fetch profile
         const { data: profile, error: profErr } = await supabase
           .from("profiles")
-          .select("user_id")
+          .select("user_id, bio, avatar_url, photos")
           .eq("username", username.toLowerCase())
           .maybeSingle();
 
@@ -108,6 +102,12 @@ export default function PublicAthleteProfile() {
           setLoading(false);
           return;
         }
+
+        setProfileData({
+          bio: profile.bio,
+          avatar_url: profile.avatar_url,
+          photos: profile.photos
+        });
 
         const uid = profile.user_id;
 
@@ -156,6 +156,7 @@ export default function PublicAthleteProfile() {
       } catch (err) {
         console.error("Fetch profile err:", err);
       } finally {
+        setMounted(true);
         setLoading(false);
       }
     }
@@ -209,6 +210,7 @@ export default function PublicAthleteProfile() {
 
   const equipementiers = sponsors.filter((sp) => sp.category === "Équipementier");
   const partenaires = sponsors.filter((sp) => sp.category === "Partenaire" || !sp.category);
+  const galleryPhotos = profileData.photos && profileData.photos.length > 0 ? profileData.photos : [];
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500 selection:text-black">
@@ -240,13 +242,24 @@ export default function PublicAthleteProfile() {
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="w-24 h-24 rounded-full bg-gradient-to-tr from-emerald-500 via-emerald-400 to-blue-500 p-1 shadow-xl flex items-center justify-center relative select-none"
+              transition={{ duration: 0.5, delay: 0.1, type: "spring", stiffness: 100 }}
+              className="w-24 h-24 rounded-full bg-gradient-to-tr from-emerald-500 via-emerald-400 to-blue-500 p-1 shadow-xl flex items-center justify-center relative select-none overflow-hidden"
             >
-              <div className="w-full h-full rounded-full bg-black flex items-center justify-center font-black text-3xl tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-400 select-none">
+              {profileData.avatar_url ? (
+                <img
+                  src={profileData.avatar_url}
+                  alt={username}
+                  className="w-full h-full object-cover rounded-full select-none"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              ) : null}
+              <div className={`w-full h-full rounded-full bg-black flex items-center justify-center font-black text-3xl tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-400 select-none ${profileData.avatar_url ? 'hidden' : ''}`}>
                 {username?.slice(0, 2).toUpperCase() || "BA"}
               </div>
-              <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-400 border-2 border-black rounded-full animate-pulse"></span>
+              <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-400 border-2 border-black rounded-full animate-pulse z-10"></span>
             </motion.div>
             
             <div className="flex flex-col gap-1 select-none">
@@ -262,7 +275,7 @@ export default function PublicAthleteProfile() {
             </div>
 
             <p className="text-gray-300 text-sm max-w-sm mt-1 px-4 leading-relaxed select-none">
-              Athlète passionné visant l&apos;excellence sur les pistes nationales et internationales.
+              {profileData.bio || "Athlète passionné visant l'excellence sur les pistes nationales et internationales."}
             </p>
           </div>
         </StaggeredWrapper>
@@ -305,34 +318,37 @@ export default function PublicAthleteProfile() {
         )}
 
         {/* Horizontal Gallery */}
-        <StaggeredWrapper delay={0.22}>
-          <div className="w-full select-none">
-            <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-3 px-1">
-              Galerie Photos
-            </h3>
-            <div className="w-full flex items-center gap-4 overflow-x-auto pb-4 snap-x select-none scrollbar-none">
-              {DEFAULT_PHOTOS.map((photo, i) => (
-                <motion.div
-                  key={i}
-                  whileHover={{ scale: 1.03 }}
-                  className="w-[200px] flex-shrink-0 snap-center backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-lg select-none"
-                >
-                  <img
-                    src={photo.url}
-                    alt={photo.title}
-                    width={200}
-                    height={112}
-                    className="w-full h-28 object-cover select-none pointer-events-none"
-                    loading="lazy"
-                  />
-                  <div className="p-3 text-[11px] font-bold text-gray-300 text-center uppercase tracking-wide">
-                    {photo.title}
-                  </div>
-                </motion.div>
-              ))}
+        {galleryPhotos.length > 0 && (
+          <StaggeredWrapper delay={0.22}>
+            <div className="w-full select-none">
+              <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-3 px-1">
+                Galerie Photos
+              </h3>
+              <div className="w-full flex items-center gap-4 overflow-x-auto pb-4 snap-x select-none scrollbar-none">
+                {galleryPhotos.map((photo, i) => (
+                  <motion.div
+                    key={i}
+                    whileHover={{ scale: 1.03 }}
+                    className="w-[200px] flex-shrink-0 snap-center backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-lg select-none"
+                  >
+                    <img
+                      src={photo.url}
+                      alt={photo.title}
+                      width={200}
+                      height={112}
+                      className="w-full h-28 object-cover select-none pointer-events-none"
+                      loading="lazy"
+                      onError={(e) => e.currentTarget.src = 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=400&q=80'}
+                    />
+                    <div className="p-3 text-[11px] font-bold text-gray-300 text-center uppercase tracking-wide">
+                      {photo.title}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             </div>
-          </div>
-        </StaggeredWrapper>
+          </StaggeredWrapper>
+        )}
 
         {/* Vidéos Externes */}
         {videos.length > 0 && (
