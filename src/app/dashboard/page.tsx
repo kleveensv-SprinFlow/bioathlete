@@ -120,14 +120,39 @@ export default function DashboardPage() {
         const uid = user.id;
         setUserId(uid);
 
-        // Fetch user profile username
-        const { data: profData, error: profErr } = await supabase
-          .from("profiles")
-          .select("username, is_premium, bio, avatar_url, photos, full_name, views_count")
-          .eq("user_id", uid)
-          .maybeSingle();
+        let profData = null;
+        try {
+          const { data: existingProf, error: profErr } = await supabase
+            .from("profiles")
+            .select("username, is_premium, bio, avatar_url, photos, full_name, views_count")
+            .eq("user_id", uid)
+            .maybeSingle();
 
-        if (!profErr && profData) {
+          if (!profErr && existingProf) {
+            profData = existingProf;
+          } else if (!existingProf) {
+            // It doesn't exist, let's create a default one
+            const generatedUsername = "athlete-" + uid.slice(0, 5);
+            const { data: newProf, error: createErr } = await supabase
+              .from("profiles")
+              .insert([{
+                user_id: uid,
+                username: generatedUsername,
+                full_name: "Nouvel Athlète",
+                is_premium: false
+              }])
+              .select()
+              .maybeSingle();
+
+            if (!createErr && newProf) {
+              profData = newProf;
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+
+        if (profData) {
           setUsername(profData.username || "");
           setUsernameInput(profData.username || "");
           setFullNameInput(profData.full_name || "");
