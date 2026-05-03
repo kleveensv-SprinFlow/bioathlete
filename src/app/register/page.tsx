@@ -22,9 +22,8 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
-    // Absolute blocking Rule 2 & Rule 5
     if (!acceptTerms) {
-      setError("Vous devez obligatoirement accepter les CGU et la Politique de Confidentialité avant de continuer.");
+      setError("Vous devez obligatoirement accepter les CGU/CGV et la Politique de Confidentialité avant de continuer.");
       return;
     }
 
@@ -168,7 +167,7 @@ export default function RegisterPage() {
                   onClick={() => setActiveModal("cgu")}
                   className="text-emerald-400 hover:underline font-bold transition-all cursor-pointer"
                 >
-                  CGU
+                  CGU/CGV
                 </button>{" "}
                 et la{" "}
                 <button
@@ -208,7 +207,7 @@ export default function RegisterPage() {
 
       </div>
 
-      {/* MODALS */}
+      {/* MODALS WITH CUSTOM SCROLLBAR */}
       <AnimatePresence>
         {activeModal === "cgu" && (
           <motion.div
@@ -221,11 +220,11 @@ export default function RegisterPage() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="max-w-md w-full backdrop-blur-xl bg-white/10 border border-white/20 p-6 rounded-3xl shadow-2xl flex flex-col gap-4 max-h-[85vh] overflow-y-auto select-none"
+              className="max-w-xl w-full backdrop-blur-xl bg-white/10 border border-white/20 p-6 rounded-3xl shadow-2xl flex flex-col gap-4 max-h-[85vh] select-none"
             >
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <h3 className="text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 uppercase">
-                  CGU & Conditions Protectrices
+                  CGU & CGV Complètes
                 </h3>
                 <button
                   type="button"
@@ -236,25 +235,46 @@ export default function RegisterPage() {
                 </button>
               </div>
 
-              <div className="flex flex-col gap-4 text-xs text-gray-300 leading-relaxed overflow-y-auto select-none">
+              <div className="flex flex-col gap-5 text-xs text-gray-300 leading-relaxed overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-emerald-500/30 scrollbar-track-transparent select-none">
                 <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">1. Clause de véracité</h4>
+                  <h4 className="text-emerald-400 font-bold">Article 1. Objet du service et conditions d&apos;accès</h4>
                   <p>
-                    L&apos;utilisateur s&apos;engage formellement sur l&apos;exactitude des performances et chronos renseignés. BioAthlete ne procède à aucune vérification manuelle et décline toute responsabilité pour toute déclaration erronée.
+                    BioAthlete.space est un service édité par BioAthlete SAS permettant aux sportifs de publier une vitrine digitale. L&apos;accès au service est restreint aux personnes physiques majeures agissant à titre personnel ou professionnel.
                   </p>
                 </section>
 
                 <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">2. Clause de propriété intellectuelle</h4>
+                  <h4 className="text-emerald-400 font-bold">Article 2. Licence de diffusion et Propriété intellectuelle</h4>
                   <p>
-                    L&apos;utilisateur est l&apos;unique responsable des contenus et s&apos;engage à posséder l&apos;ensemble des droits de diffusion et d&apos;auteur pour les images, vidéos et fichiers qu&apos;il publie sur sa vitrine digitale.
+                    En publiant du contenu (images, vidéos, informations sportives) sur le site, l&apos;athlète accorde à BioAthlete SAS une licence mondiale, gratuite et non exclusive, d&apos;afficher et de reproduire ses médias uniquement dans le cadre de l&apos;exploitation du service BioAthlete. L&apos;athlète garantit expressément posséder l&apos;ensemble des droits de diffusion sur les médias soumis.
                   </p>
                 </section>
 
                 <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">3. Clause de décharge de responsabilité</h4>
+                  <h4 className="text-emerald-400 font-bold">Article 3. Responsabilité de BioAthlete SAS</h4>
                   <p>
-                    BioAthlete agit uniquement comme un outil de visibilité et ne garantit aucun contrat de sponsoring ou de partenariat avec des marques sportives ou des tiers. L&apos;utilisation de nos fonctionnalités gratuites ou premium n&apos;ouvre droit à aucune contrepartie financière.
+                    L&apos;utilisateur décharge BioAthlete de toute responsabilité en cas d&apos;interruption technique, de litige ou de mauvaise exécution d&apos;un contrat avec un sponsor trouvé par l&apos;intermédiaire de la plateforme. En aucun cas BioAthlete ne saurait être tenu pour responsable de toute blessure survenue lors des entraînements.
+                  </p>
+                </section>
+
+                <section className="flex flex-col gap-1">
+                  <h4 className="text-emerald-400 font-bold">Article 4. Véracité des données</h4>
+                  <p>
+                    L&apos;utilisateur est l&apos;unique garant de l&apos;exactitude des performances chronométriques saisies. La saisie de faux records (ex: temps falsifiés au 60m ou 100m) entraînera la suspension immédiate du compte de l&apos;athlète.
+                  </p>
+                </section>
+
+                <section className="flex flex-col gap-1">
+                  <h4 className="text-emerald-400 font-bold">Article 5. Conditions Financières (Gestion Stripe)</h4>
+                  <p>
+                    La souscription aux options Élite ou Premium entraîne la facturation d&apos;un abonnement récurrent selon la grille tarifaire en vigueur. Le traitement des données financières et bancaires est géré exclusivement par notre partenaire tiers agréé **Stripe**. Aucun remboursement ne sera effectué après l&apos;activation des services premium.
+                  </p>
+                </section>
+
+                <section className="flex flex-col gap-1">
+                  <h4 className="text-emerald-400 font-bold">Article 6. Clause de Juridiction</h4>
+                  <p>
+                    Les présentes conditions sont soumises au droit français. Tout litige relatif à leur interprétation ou leur exécution relève de la compétence exclusive des tribunaux français compétents.
                   </p>
                 </section>
               </div>
@@ -264,7 +284,7 @@ export default function RegisterPage() {
                 onClick={() => setActiveModal(null)}
                 className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 font-black tracking-wide text-xs uppercase text-black rounded-xl transition-all duration-300 mt-2 select-none"
               >
-                Fermer et revenir
+                Fermer et continuer
               </button>
             </motion.div>
           </motion.div>
@@ -281,7 +301,7 @@ export default function RegisterPage() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="max-w-md w-full backdrop-blur-xl bg-white/10 border border-white/20 p-6 rounded-3xl shadow-2xl flex flex-col gap-4 max-h-[85vh] overflow-y-auto select-none"
+              className="max-w-xl w-full backdrop-blur-xl bg-white/10 border border-white/20 p-6 rounded-3xl shadow-2xl flex flex-col gap-4 max-h-[85vh] select-none"
             >
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <h3 className="text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 uppercase">
@@ -296,25 +316,39 @@ export default function RegisterPage() {
                 </button>
               </div>
 
-              <div className="flex flex-col gap-4 text-xs text-gray-300 leading-relaxed overflow-y-auto select-none">
+              <div className="flex flex-col gap-5 text-xs text-gray-300 leading-relaxed overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-emerald-500/30 scrollbar-track-transparent select-none">
                 <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">1. Stockage sécurisé (Supabase)</h4>
+                  <h4 className="text-emerald-400 font-bold">1. Données collectées</h4>
                   <p>
-                    L&apos;ensemble de vos données d&apos;authentification et d&apos;activité sont enregistrées, sécurisées et chiffrées de bout en bout sur notre infrastructure technique partenaire **Supabase**. Les serveurs répondent aux normes internationales de protection des données (RGPD).
+                    Dans le cadre de l&apos;utilisation de notre site, nous collectons les données suivantes : adresse e-mail, identifiant utilisateur unique, performances sportives, liens de réseaux sociaux, adresse IP et logs techniques de connexion.
                   </p>
                 </section>
 
                 <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">2. Absence de cession commerciale</h4>
+                  <h4 className="text-emerald-400 font-bold">2. Cookies techniques</h4>
                   <p>
-                    BioAthlete s&apos;interdit formellement de revendre, louer ou céder vos données personnelles à des tiers à des fins de prospection publicitaire ou marketing.
+                    Le site BioAthlete.space utilise des cookies strictement nécessaires au bon fonctionnement technique de l&apos;application (persistance de la session d&apos;authentification Supabase). Aucun cookie de suivi publicitaire tiers n&apos;est déposé.
                   </p>
                 </section>
 
                 <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">3. Vos droits RGPD de suppression</h4>
+                  <h4 className="text-emerald-400 font-bold">3. Hébergement par Supabase</h4>
                   <p>
-                    Vous disposez d&apos;un droit d&apos;accès, de rectification et de suppression totale de votre compte directement à partir des outils disponibles dans votre Dashboard.
+                    Toutes les données de compte sont chiffrées et enregistrées de manière sécurisée par notre prestataire technique tiers **Supabase**, en conformité avec le RGPD.
+                  </p>
+                </section>
+
+                <section className="flex flex-col gap-1">
+                  <h4 className="text-emerald-400 font-bold">4. Gestion des paiements (Stripe)</h4>
+                  <p>
+                    En cas de paiement des services Premium, les données de paiement et d&apos;achat sont exclusivement traitées par le prestataire agréé **Stripe**, qui agit en tant que sous-traitant de paiement indépendant. Aucune donnée bancaire n&apos;est stockée sur nos propres serveurs.
+                  </p>
+                </section>
+
+                <section className="flex flex-col gap-1">
+                  <h4 className="text-emerald-400 font-bold">5. Droits de suppression (RGPD)</h4>
+                  <p>
+                    Tout utilisateur peut demander la suppression intégrale de ses données personnelles à tout moment via son espace personnel ou par simple demande par email.
                   </p>
                 </section>
               </div>
@@ -324,7 +358,7 @@ export default function RegisterPage() {
                 onClick={() => setActiveModal(null)}
                 className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 font-black tracking-wide text-xs uppercase text-black rounded-xl transition-all duration-300 mt-2 select-none"
               >
-                Fermer et revenir
+                Fermer et continuer
               </button>
             </motion.div>
           </motion.div>
