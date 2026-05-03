@@ -279,7 +279,7 @@ export default function PublicAthleteProfile() {
             
             <div className="flex flex-col gap-1 select-none">
               <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-md uppercase">
-                {profileData.full_name || username}
+                {(profileData.full_name || username).toUpperCase()}
               </h1>
               <p className="text-emerald-400 text-sm font-extrabold uppercase tracking-widest select-none">
                 Athlète

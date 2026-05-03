@@ -638,7 +638,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300">
-              Bienvenue {firstNameInput || "Athlète"}
+              Bienvenue {(firstNameInput || "Athlète").toUpperCase()}
             </h1>
             <p className="text-gray-400 text-xs">Gestion du profil BioAthlete</p>
           </div>
