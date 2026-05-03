@@ -112,18 +112,23 @@ export default function PublicAthleteProfile() {
 
         const uid = profile.user_id;
 
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const isOwner = currentUser && currentUser.id === uid;
+
         // Increment user's specific views_count
-        try {
-          const { error: rpcError } = await supabase.rpc('increment_views', { p_id: uid });
-          if (rpcError) {
-             // Fallback if RPC doesn't exist, try simple direct update
-            const { data } = await supabase.from("profiles").select("views_count").eq("user_id", uid).single();
-            if (data) {
-              await supabase.from("profiles").update({ views_count: (data.views_count || 0) + 1 }).eq("user_id", uid);
+        if (!isOwner) {
+          try {
+            const { error: rpcError } = await supabase.rpc('increment_views', { p_id: uid });
+            if (rpcError) {
+               // Fallback if RPC doesn't exist, try simple direct update
+              const { data } = await supabase.from("profiles").select("views_count").eq("user_id", uid).single();
+              if (data) {
+                await supabase.from("profiles").update({ views_count: (data.views_count || 0) + 1 }).eq("user_id", uid);
+              }
             }
+          } catch (e) {
+              // Ignorer si la fonction rpc n'existe pas en local pendant le dev
           }
-        } catch (e) {
-            // Ignorer si la fonction rpc n'existe pas en local pendant le dev
         }
 
         // Fetch records

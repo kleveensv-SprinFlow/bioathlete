@@ -92,6 +92,7 @@ export default function DashboardPage() {
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAddPerfModal, setShowAddPerfModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Profile enhancements
   const [bioInput, setBioInput] = useState("");
@@ -254,6 +255,11 @@ export default function DashboardPage() {
     const publicUrl = await uploadFileToSupabase(file, 'avatars');
     if (publicUrl) {
       setAvatarUrl(publicUrl);
+      try {
+        await supabase.from("profiles").upsert([{ user_id: userId, avatar_url: publicUrl }], { onConflict: "user_id" });
+      } catch (err) {
+        console.error("Error saving avatar URL:", err);
+      }
     }
     setIsUploading(false);
   };
@@ -636,6 +642,20 @@ export default function DashboardPage() {
     router.push("/login");
   };
 
+  const handleDeleteAccount = async () => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer définitivement votre compte et toutes vos données ? Cette action est irréversible.")) return;
+    if (!userId) return;
+
+    try {
+      await supabase.from("profiles").delete().eq("user_id", userId);
+      await supabase.auth.signOut();
+      router.push("/login");
+    } catch (error) {
+      console.error(error);
+      alert("Erreur lors de la suppression du compte.");
+    }
+  };
+
   const handleGenerateMediaKit = () => {
     const doc = new jsPDF();
     doc.setFillColor(15, 15, 15);
@@ -698,12 +718,59 @@ export default function DashboardPage() {
             </h1>
             <p className="text-gray-400 text-xs">Gestion du profil BioAthlete</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-white/5 border border-white/10 text-xs font-bold rounded-xl text-gray-300 hover:bg-white/10 transition-all duration-300 select-none"
-          >
-            Déconnexion
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="w-12 h-12 rounded-full border-2 border-emerald-500 overflow-hidden bg-neutral-900 flex items-center justify-center hover:scale-105 hover:shadow-[0_0_12px_rgba(16,185,129,0.4)] transition-all duration-300 select-none cursor-pointer"
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Photo de profil" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xl text-emerald-400 font-bold select-none">
+                  {(firstNameInput || "A").charAt(0).toUpperCase()}
+                </span>
+              )}
+            </button>
+
+            {/* Dropdown Menu Popup */}
+            {showUserMenu && (
+              <div className="absolute right-0 top-14 w-48 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 shadow-2xl z-50 flex flex-col gap-1 select-none animate-fadeIn">
+                <label className="w-full text-[11px] font-bold text-emerald-400 hover:bg-white/5 px-3 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2">
+                  <span>📸</span>
+                  <span>Changer la photo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      handleAvatarUpload(e);
+                      setShowUserMenu(false);
+                    }}
+                    className="hidden"
+                  />
+                </label>
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    handleLogout();
+                  }}
+                  className="w-full text-left text-[11px] font-bold text-gray-300 hover:bg-white/5 hover:text-white px-3 py-2.5 rounded-xl transition-all flex items-center gap-2"
+                >
+                  <span>🚪</span>
+                  <span>Se déconnecter</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    handleDeleteAccount();
+                  }}
+                  className="w-full text-left text-[11px] font-bold text-red-400 hover:bg-red-500/10 px-3 py-2.5 rounded-xl transition-all flex items-center gap-2"
+                >
+                  <span>⚠️</span>
+                  <span>Supprimer le compte</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Freemium Banner & Option Élite */}
