@@ -805,19 +805,6 @@ export default function DashboardPage() {
 
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Nom et Prénom
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Jean Dupont"
-                    value={fullNameInput}
-                    onChange={(e) => setFullNameInput(e.target.value)}
-                    className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
                     Photo de profil (Upload)
                   </label>
                   <div className="flex items-center gap-4">
