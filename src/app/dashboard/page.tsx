@@ -13,6 +13,7 @@ interface Performance {
   distance: string;
   temps: string;
   competition: string;
+  user_id?: string;
 }
 
 interface SocialLink {
@@ -20,15 +21,16 @@ interface SocialLink {
   title: string;
   url: string;
   icon: string;
+  user_id?: string;
 }
 
 interface Sponsor {
   id: string | number;
   name: string;
   logo: string;
+  user_id?: string;
 }
 
-// Liste d'objets JSON contenant les noms des marques majeures
 const PREDEFINED_SPONSORS = [
   { name: "Nike", logo: "👟 Nike" },
   { name: "Adidas", logo: "👟 Adidas" },
@@ -47,24 +49,15 @@ const PREDEFINED_SPONSORS = [
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Local state with fallback mock data
-  const [performances, setPerformances] = useState<Performance[]>([
-    { date: "2024-02-15", distance: "60m", temps: "6.55", competition: "Chpt de France" },
-    { date: "2024-04-20", distance: "100m", temps: "10.32", competition: "Meeting Intl" },
-    { date: "2024-10-12", distance: "100m", temps: "9.98", competition: "Finale Or" },
-  ]);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [username, setUsername] = useState("");
+  const [usernameInput, setUsernameInput] = useState("");
+  const [profSuccess, setProfSuccess] = useState("");
 
-  const [links, setLinks] = useState<SocialLink[]>([
-    { id: 1, title: "FFA Officiel", url: "https://www.athle.fr/", icon: "🏅" },
-    { id: 2, title: "Instagram", url: "https://instagram.com/", icon: "📸" },
-  ]);
-
-  const [sponsors, setSponsors] = useState<Sponsor[]>([
-    { id: 1, name: "Nike", logo: "👟 Nike" },
-    { id: 2, name: "Red Bull", logo: "🥤 Red Bull" },
-  ]);
-
-  const [views, setViews] = useState(124);
+  const [performances, setPerformances] = useState<Performance[]>([]);
+  const [links, setLinks] = useState<SocialLink[]>([]);
+  const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+  const [views, setViews] = useState(0);
 
   // Form states
   const [newDate, setNewDate] = useState("");
@@ -79,45 +72,92 @@ export default function DashboardPage() {
   const [selectedSponsor, setSelectedSponsor] = useState("Nike");
   const [customSponsorName, setCustomSponsorName] = useState("");
 
-  // Load data from Supabase on mount
+  // Load user data and content
   useEffect(() => {
-    async function loadSupabaseData() {
+    async function loadUserAndContent() {
       try {
-        const { data: perfData, error: perfErr } = await supabase.from("performances").select("*");
-        if (!perfErr && perfData && perfData.length > 0) {
-          setPerformances(perfData);
+        const { data: { user }, error: authErr } = await supabase.auth.getUser();
+        if (authErr || !user) {
+          router.push("/login");
+          return;
         }
 
-        const { data: linkData, error: linkErr } = await supabase.from("links").select("*");
-        if (!linkErr && linkData && linkData.length > 0) {
-          setLinks(linkData);
+        const uid = user.id;
+        setUserId(uid);
+
+        // Fetch user profile username
+        const { data: profData, error: profErr } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("user_id", uid)
+          .maybeSingle();
+
+        if (!profErr && profData?.username) {
+          setUsername(profData.username);
+          setUsernameInput(profData.username);
         }
 
-        const { data: viewData, error: viewErr } = await supabase.from("views").select("*");
-        if (!viewErr && viewData && viewData.length > 0) {
-          setViews(viewData.length);
-        }
+        // Fetch filtered data
+        const { data: perfData, error: perfErr } = await supabase
+          .from("performances")
+          .select("*")
+          .eq("user_id", uid);
+        if (!perfErr && perfData) setPerformances(perfData);
 
-        const { data: sponsorData, error: spErr } = await supabase.from("sponsors").select("*");
-        if (!spErr && sponsorData && sponsorData.length > 0) {
-          setSponsors(sponsorData);
-        }
+        const { data: linkData, error: linkErr } = await supabase
+          .from("links")
+          .select("*")
+          .eq("user_id", uid);
+        if (!linkErr && linkData) setLinks(linkData);
+
+        const { data: spData, error: spErr } = await supabase
+          .from("sponsors")
+          .select("*")
+          .eq("user_id", uid);
+        if (!spErr && spData) setSponsors(spData);
+
+        const { data: viewData, error: viewErr } = await supabase
+          .from("views")
+          .select("*");
+        if (!viewErr && viewData) setViews(viewData.length);
       } catch (err) {
         console.error("Erreur chargement Supabase:", err);
       }
     }
-    loadSupabaseData();
-  }, []);
+    loadUserAndContent();
+  }, [router]);
+
+  const handleSaveUsername = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!usernameInput || !userId) return;
+    setProfSuccess("");
+
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .upsert([{ user_id: userId, username: usernameInput.toLowerCase() }])
+        .select();
+
+      if (!error && data && data.length > 0) {
+        setUsername(data[0].username);
+        setUsernameInput(data[0].username);
+        setProfSuccess("Nom d'utilisateur enregistré !");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleAddPerformance = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDate || !newTemps) return;
+    if (!newDate || !newTemps || !userId) return;
 
     const newItem: Performance = {
       date: newDate,
       distance: newDistance,
       temps: newTemps,
       competition: newComp || "Meeting",
+      user_id: userId,
     };
 
     try {
@@ -138,12 +178,13 @@ export default function DashboardPage() {
 
   const handleAddLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLinkTitle || !newLinkUrl) return;
+    if (!newLinkTitle || !newLinkUrl || !userId) return;
 
     const newItem: Omit<SocialLink, "id"> = {
       title: newLinkTitle,
       url: newLinkUrl,
       icon: newLinkIcon || "🔗",
+      user_id: userId,
     };
 
     try {
@@ -164,18 +205,21 @@ export default function DashboardPage() {
 
   const handleAddSponsor = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) return;
 
     let newItem: Omit<Sponsor, "id">;
     if (customSponsorName.trim() !== "") {
       newItem = {
         name: customSponsorName,
         logo: "🏢 " + customSponsorName,
+        user_id: userId,
       };
     } else {
       const matched = PREDEFINED_SPONSORS.find((s) => s.name === selectedSponsor);
       newItem = {
         name: selectedSponsor,
         logo: matched ? matched.logo : "🏢 " + selectedSponsor,
+        user_id: userId,
       };
     }
 
@@ -233,7 +277,6 @@ export default function DashboardPage() {
 
   const handleGenerateMediaKit = () => {
     const doc = new jsPDF();
-
     doc.setFillColor(15, 15, 15);
     doc.rect(0, 0, 210, 297, "F");
 
@@ -256,7 +299,7 @@ export default function DashboardPage() {
 
     doc.setFontSize(11);
     doc.setTextColor(200, 200, 200);
-    doc.text("Nom de l'athlète : Sprinteur N1", 20, 75);
+    doc.text(`Nom de l'athlète : ${username || "Sprinteur N1"}`, 20, 75);
     doc.text("Activités sportives : 100m, 60m", 20, 82);
 
     doc.setFontSize(14);
@@ -309,7 +352,46 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* Compteur Visites (Glassmorphism Premium) */}
+        {/* Configuration Username (Dynamic profile URL) */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl select-none"
+        >
+          <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 select-none mb-3">
+            Identité Publique & Profil URL
+          </h3>
+          <form onSubmit={handleSaveUsername} className="flex flex-col gap-3">
+            <input
+              type="text"
+              placeholder="Ex: bolt-95"
+              value={usernameInput}
+              onChange={(e) => setUsernameInput(e.target.value)}
+              className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+              required
+            />
+            {username && (
+              <p className="text-[10px] text-gray-500 select-none">
+                Votre profil est accessible sur :{" "}
+                <Link href={`/u/${username}`} target="_blank" className="text-emerald-400 hover:underline">
+                  /u/{username}
+                </Link>
+              </p>
+            )}
+            {profSuccess && (
+              <p className="text-[10px] text-emerald-400 select-none">{profSuccess}</p>
+            )}
+            <button
+              type="submit"
+              className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-extrabold uppercase tracking-wider text-white rounded-xl transition-all duration-300 select-none"
+            >
+              Enregistrer mon username
+            </button>
+          </form>
+        </motion.div>
+
+        {/* Compteur Visites */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
