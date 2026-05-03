@@ -93,6 +93,7 @@ export default function DashboardPage() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAddPerfModal, setShowAddPerfModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Profile enhancements
   const [bioInput, setBioInput] = useState("");
@@ -693,30 +694,20 @@ export default function DashboardPage() {
       <div className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
       <div className="relative z-10 max-w-md mx-auto px-5 pt-8 flex flex-col gap-8 min-h-screen">
-        {/* Navigation top bar */}
-        <div className="w-full flex items-center justify-between gap-3 select-none">
-          <Link
-            href={`/u/${username || usernameInput || "athlete"}`}
-            target="_self"
-            className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider text-center rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 shadow-lg select-none"
-          >
-            Voir ma page <span>↗</span>
-          </Link>
+        {/* Top bar with logo, share icon and profile */}
+        <div className="flex items-center justify-between select-none">
           <button
             onClick={() => setShowShareModal(true)}
-            className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider text-center rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 select-none"
+            className="w-11 h-11 bg-white/5 border border-white/10 text-white rounded-2xl flex items-center justify-center hover:bg-white/10 hover:border-emerald-500/30 transition-all duration-300 shadow-xl select-none"
+            title="Partager mon profil"
           >
-            🔗 Partager ma page
+            <span className="text-base">🔗</span>
           </button>
-        </div>
-
-        {/* Top bar with logo and logout */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300">
+          <div className="flex-1 px-4 text-center">
+            <h1 className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300">
               Bienvenue {(firstNameInput || "Athlète").toUpperCase()}
             </h1>
-            <p className="text-gray-400 text-xs">Gestion du profil BioAthlete</p>
+            <p className="text-gray-500 text-[10px] font-medium tracking-wide">Tableau de bord</p>
           </div>
           <div className="relative">
             <button
@@ -735,6 +726,29 @@ export default function DashboardPage() {
             {/* Dropdown Menu Popup */}
             {showUserMenu && (
               <div className="absolute right-0 top-14 w-48 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 shadow-2xl z-50 flex flex-col gap-1 select-none animate-fadeIn">
+                {!isPremium && (
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowStripeModal(true);
+                    }}
+                    className="relative overflow-hidden w-full text-left text-[11px] font-black tracking-wider uppercase text-black bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-400 px-3 py-2.5 rounded-xl hover:brightness-110 transition-all flex items-center gap-2 mb-1 group"
+                  >
+                    <span>🏆</span>
+                    <span>Devenir Élite</span>
+                    <span className="absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-25deg] group-hover:left-[120%] left-[-60%] transition-all duration-700 ease-in-out pointer-events-none"></span>
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    setShowProfileModal(true);
+                  }}
+                  className="w-full text-left text-[11px] font-bold text-gray-300 hover:bg-white/5 hover:text-white px-3 py-2.5 rounded-xl transition-all flex items-center gap-2"
+                >
+                  <span>✏️</span>
+                  <span>Modifier mon profil</span>
+                </button>
                 <label className="w-full text-[11px] font-bold text-emerald-400 hover:bg-white/5 px-3 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2">
                   <span>📸</span>
                   <span>Changer la photo</span>
@@ -833,110 +847,80 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* Tab Content: Profil */}
+        {/* Tab Content: Profil (Live Visitor Preview) */}
         {activeTab === "profil" && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col gap-6 w-full"
           >
-            {/* Configuration Profile */}
-            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl select-none">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 select-none mb-4">
-                Informations Publiques
-              </h3>
-              <form onSubmit={handleSaveProfileInfo} className="flex flex-col gap-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                      Prénom
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Usain"
-                      value={firstNameInput}
-                      onChange={(e) => setFirstNameInput(e.target.value)}
-                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                      Nom
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Bolt"
-                      value={lastNameInput}
-                      onChange={(e) => setLastNameInput(e.target.value)}
-                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
-                    />
-                  </div>
+            {/* Live Athlete Preview Card */}
+            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl flex flex-col items-center text-center select-none relative overflow-hidden">
+              <div className="absolute top-4 right-4 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-xl">
+                <span className="text-[9px] font-black tracking-wider uppercase text-emerald-400">Aperçu Visiteur</span>
+              </div>
+
+              {avatarUrl ? (
+                <div className="w-24 h-24 rounded-full border-2 border-emerald-500 p-0.5 overflow-hidden bg-neutral-900 mt-4 select-none flex-shrink-0 shadow-[0_0_16px_rgba(16,185,129,0.2)]">
+                  <img src={avatarUrl} alt="Photo" className="w-full h-full object-cover rounded-full" />
                 </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Bio / Description
-                  </label>
-                  <textarea
-                    placeholder="Athlète passionné visant l'excellence..."
-                    value={bioInput}
-                    onChange={(e) => setBioInput(e.target.value)}
-                    rows={3}
-                    className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600 resize-none"
-                  />
+              ) : (
+                <div className="w-24 h-24 rounded-full border border-white/10 bg-neutral-900 mt-4 flex items-center justify-center text-3xl select-none flex-shrink-0">
+                  👤
                 </div>
+              )}
 
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Photo de profil (Upload)
-                  </label>
-                  <div className="flex items-center gap-4">
-                    {avatarUrl ? (
-                      <div className="w-16 h-16 rounded-full overflow-hidden border border-emerald-500/30 flex-shrink-0">
-                        <img src={avatarUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.src = 'https://api.dicebear.com/7.x/pixel-art/svg?seed=fallback'} />
-                      </div>
-                    ) : (
-                      <div className="w-16 h-16 rounded-full overflow-hidden border border-white/10 bg-neutral-900 flex items-center justify-center text-xl flex-shrink-0">
-                        👤
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/png, image/jpeg, image/webp"
-                      onChange={handleAvatarUpload}
-                      disabled={isUploading}
-                      className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-white/10 file:text-emerald-400 hover:file:bg-white/20 transition-all cursor-pointer"
-                    />
-                  </div>
-                </div>
+              <h2 className="text-xl font-black tracking-tight text-white uppercase mt-4">
+                {(firstNameInput || "Prénom").toUpperCase()} {(lastNameInput || "Nom").toUpperCase()}
+              </h2>
+              {bioInput ? (
+                <p className="text-gray-400 text-xs mt-2 max-w-xs leading-relaxed">
+                  {bioInput}
+                </p>
+              ) : (
+                <p className="text-gray-500 text-xs mt-2 italic">Aucune biographie rédigée.</p>
+              )}
 
-                {profSuccess && (
-                  <p className="text-[10px] text-emerald-400 font-bold select-none">{profSuccess}</p>
-                )}
-
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all duration-300 select-none mt-2"
-                >
-                  Enregistrer mes informations
-                </button>
-              </form>
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+                <span className="text-[10px] text-gray-400 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
+                  {performances.length} Performance{performances.length > 1 ? "s" : ""}
+                </span>
+                <span className="text-[10px] text-gray-400 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
+                  {sponsors.length} Partenaire{sponsors.length > 1 ? "s" : ""}
+                </span>
+                <span className="text-[10px] text-gray-400 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
+                  {links.length} Lien{links.length > 1 ? "s" : ""}
+                </span>
+              </div>
             </div>
 
-            {/* Compteur Visites */}
+            {/* Visit stats */}
             <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl flex items-center justify-between hover:border-emerald-500/20 transition-all duration-300 select-none">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 select-none">
                   Statistiques de visites
                 </h3>
-                <p className="text-gray-400 text-xs mt-0.5 select-none">Vues uniques du profil</p>
+                <p className="text-2xl font-black text-white mt-1 tracking-tight">
+                  {views || 0} <span className="text-xs text-gray-400 font-semibold">vues uniques</span>
+                </p>
               </div>
-              <div className="flex flex-col items-end">
-                <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-400 tracking-tight">
-                  {views}
-                </span>
-                <span className="text-[10px] text-gray-500 uppercase font-semibold">Vues</span>
-              </div>
+              <div className="text-3xl text-emerald-400/30">👁️</div>
+            </div>
+
+            {/* Action buttons inside Profile tab to direct to other tabs */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setActiveTab("performances")}
+                className="py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl transition-all duration-300 flex items-center justify-center gap-2"
+              >
+                📊 Performances
+              </button>
+              <button
+                onClick={() => setActiveTab("sponsors")}
+                className="py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl transition-all duration-300 flex items-center justify-center gap-2"
+              >
+                🤝 Sponsors
+              </button>
             </div>
 
             {/* Button Média Kit PDF */}
@@ -944,7 +928,7 @@ export default function DashboardPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleGenerateMediaKit}
-              className="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-500/30 font-extrabold text-sm text-center text-white rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.1)] transition-all duration-300 tracking-wide uppercase select-none mt-4"
+              className="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-500/30 font-extrabold text-sm text-center text-white rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.1)] transition-all duration-300 tracking-wide uppercase select-none mt-1"
             >
               📄 Générer mon Média Kit (PDF)
             </motion.button>
@@ -1645,6 +1629,134 @@ export default function DashboardPage() {
                     className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all"
                   >
                     Annuler
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+         )}
+
+        {/* Profile and Identity Edit Modal */}
+        {showProfileModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-4 select-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="backdrop-blur-2xl bg-neutral-900/90 border border-white/10 rounded-3xl p-6 shadow-2xl max-w-md w-full flex flex-col gap-5 border-t-emerald-400 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex flex-col select-none">
+                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                  Édition du profil
+                </span>
+                <h3 className="text-lg font-black text-white tracking-tight leading-snug">
+                  Profil & Identité
+                </h3>
+              </div>
+
+              {/* Shine upgrade option inside the profile menu modal */}
+              {!isPremium && (
+                <button
+                  onClick={() => {
+                    setShowProfileModal(false);
+                    setShowStripeModal(true);
+                  }}
+                  className="relative overflow-hidden w-full text-center text-xs font-black tracking-wider uppercase text-black bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-400 py-3.5 rounded-2xl hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.35)] group"
+                >
+                  <span>🏆</span>
+                  <span>Devenir Élite</span>
+                  <span className="absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-25deg] group-hover:left-[120%] left-[-60%] transition-all duration-700 ease-in-out pointer-events-none"></span>
+                </button>
+              )}
+
+              <form
+                onSubmit={(e) => {
+                  handleSaveProfileInfo(e);
+                  setShowProfileModal(false);
+                }}
+                className="flex flex-col gap-4"
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                      Prénom
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Usain"
+                      value={firstNameInput}
+                      onChange={(e) => setFirstNameInput(e.target.value)}
+                      className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                      Nom
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Bolt"
+                      value={lastNameInput}
+                      onChange={(e) => setLastNameInput(e.target.value)}
+                      className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Bio / Description
+                  </label>
+                  <textarea
+                    placeholder="Athlète passionné visant l'excellence..."
+                    value={bioInput}
+                    onChange={(e) => setBioInput(e.target.value)}
+                    rows={3}
+                    className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600 resize-none"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Photo de profil (Upload)
+                  </label>
+                  <div className="flex items-center gap-4">
+                    {avatarUrl ? (
+                      <div className="w-16 h-16 rounded-full overflow-hidden border border-emerald-500/30 flex-shrink-0">
+                        <img src={avatarUrl} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-full overflow-hidden border border-white/10 bg-neutral-950 flex items-center justify-center text-xl flex-shrink-0">
+                        👤
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      onChange={handleAvatarUpload}
+                      disabled={isUploading}
+                      className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-white/10 file:text-emerald-400 hover:file:bg-white/20 transition-all cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {profSuccess && (
+                  <p className="text-[10px] text-emerald-400 font-bold select-none">{profSuccess}</p>
+                )}
+
+                <div className="flex flex-col gap-2 mt-2">
+                  <button
+                    type="submit"
+                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    💾 Enregistrer les modifications
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowProfileModal(false)}
+                    className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all"
+                  >
+                    Fermer
                   </button>
                 </div>
               </form>
