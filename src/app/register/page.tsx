@@ -55,8 +55,7 @@ export default function RegisterPage() {
     } catch (err: any) {
       console.error("Erreur signUp Supabase:", err);
       setError(
-        err?.message ||
-        "Erreur serveur d'authentification ou connexion réseau interrompue. Veuillez réessayer."
+        "Erreur 500 de Supabase. Cela signifie généralement que l'envoi d'e-mails (SMTP) est désactivé sur votre Dashboard Supabase. Désactivez l'option 'Confirm Email' dans Auth -> Providers -> Email sur votre console Supabase."
       );
     } finally {
       setLoading(false);
