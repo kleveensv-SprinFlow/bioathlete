@@ -40,7 +40,7 @@ export default function RegisterPage() {
       if (response.error) {
         setError(response.error.message);
       } else if (response.data?.user) {
-        // Check if user already exists
+        // Create profile
         await supabase.from("profiles").insert([
           {
             user_id: response.data.user.id,
@@ -48,7 +48,12 @@ export default function RegisterPage() {
             is_premium: false,
           }
         ]);
-        setStep(2);
+        
+        if (response.data.session) {
+          router.push("/dashboard");
+        } else {
+          setStep(2);
+        }
       } else {
         setError("Une erreur inattendue est survenue.");
       }
