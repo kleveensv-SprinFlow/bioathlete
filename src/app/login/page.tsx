@@ -1,70 +1,89 @@
-"use client";
-
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+'use client'
+import { useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
-  const router = useRouter();
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      const { data, error: loginError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (loginError) {
-        setError(loginError.message);
-      } else if (data.user) {
-        router.push("/dashboard");
-      }
-    } catch (err) {
-      setError("Erreur.");
-    } finally {
-      setLoading(false);
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    
+    if (error) {
+      setError("Erreur d'authentification. Vérifiez vos identifiants.")
+      setLoading(false)
+    } else {
+      router.push('/dashboard')
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans flex items-center justify-center p-6 select-none select-none">
-      <div className="max-w-sm w-full backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col gap-6">
-        <form onSubmit={handleLogin} className="flex flex-col gap-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Mot de passe"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
-            required
-          />
-          {error && <p className="text-red-400 text-xs font-semibold px-1 py-1">{error}</p>}
+    <div className="min-h-screen flex items-center justify-center bg-black p-4 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-zinc-900 via-black to-black">
+      <div className="w-full max-w-md space-y-8 bg-zinc-900/50 p-8 rounded-2xl border border-zinc-800 backdrop-blur-xl shadow-2xl">
+        <div className="text-center">
+          <h1 className="text-4xl font-extrabold text-white tracking-tighter italic">BIOATHLETE</h1>
+          <p className="mt-2 text-zinc-400 text-sm">Prêt pour ta prochaine séance ? 🏃♂️</p>
+        </div>
+
+        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-lg text-sm text-center">
+              {error}
+            </div>
+          )}
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 uppercase tracking-widest mb-1 ml-1">Email</label>
+              <input
+                type="email"
+                required
+                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                placeholder="ton@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 uppercase tracking-widest mb-1 ml-1">Mot de passe</label>
+              <input
+                type="password"
+                required
+                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300"
+            className="w-full py-4 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-colors transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
           >
-            {loading ? "Chargement..." : "Connexion"}
+            {loading ? 'Connexion...' : 'SE CONNECTER'}
           </button>
         </form>
+
+        <div className="text-center mt-6">
+          <p className="text-zinc-500 text-sm">
+            Pas encore de compte ?{' '}
+            <Link href="/register" className="text-blue-400 hover:underline font-medium">
+              S'inscrire
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
-  );
+  )
 }
