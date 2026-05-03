@@ -66,7 +66,7 @@ export default function PublicAthleteProfile() {
   const [profileNotFound, setProfileNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const [profileData, setProfileData] = useState<{ bio?: string; avatar_url?: string; photos?: { id: string; url: string; title: string }[] }>({});
+  const [profileData, setProfileData] = useState<{ full_name?: string; bio?: string; avatar_url?: string; photos?: { id: string; url: string; title: string }[] }>({});
   const [records, setRecords] = useState<Record[]>([]);
   const [links, setLinks] = useState<SocialLink[]>([]);
   const [evolution, setEvolution] = useState<EvolutionPoint[]>([]);
@@ -95,7 +95,7 @@ export default function PublicAthleteProfile() {
           .from("profiles")
           .select("user_id, bio, avatar_url, photos")
           .eq("username", username.toLowerCase())
-          .maybeSingle();
+          .maybeSingle() as any;
 
         if (profErr || !profile?.user_id) {
           setProfileNotFound(true);
@@ -104,12 +104,27 @@ export default function PublicAthleteProfile() {
         }
 
         setProfileData({
+          full_name: profile.full_name,
           bio: profile.bio,
           avatar_url: profile.avatar_url,
           photos: profile.photos
         });
 
         const uid = profile.user_id;
+
+        // Increment user's specific views_count
+        try {
+          const { error: rpcError } = await supabase.rpc('increment_views', { p_id: uid });
+          if (rpcError) {
+             // Fallback if RPC doesn't exist, try simple direct update
+            const { data } = await supabase.from("profiles").select("views_count").eq("user_id", uid).single();
+            if (data) {
+              await supabase.from("profiles").update({ views_count: (data.views_count || 0) + 1 }).eq("user_id", uid);
+            }
+          }
+        } catch (e) {
+            // Ignorer si la fonction rpc n'existe pas en local pendant le dev
+        }
 
         // Fetch records
         const { data: perfData, error: perfErr } = await supabase
@@ -264,13 +279,10 @@ export default function PublicAthleteProfile() {
             
             <div className="flex flex-col gap-1 select-none">
               <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-md uppercase">
-                {username}
+                {profileData.full_name || username}
               </h1>
               <p className="text-emerald-400 text-sm font-extrabold uppercase tracking-widest select-none">
-                Sprint • Performance
-              </p>
-              <p className="text-gray-400 text-xs select-none">
-                En activité
+                Athlète
               </p>
             </div>
 
@@ -300,6 +312,21 @@ export default function PublicAthleteProfile() {
           </StaggeredWrapper>
         )}
 
+        {/* Fallback no sponsors */}
+        {equipementiers.length === 0 && partenaires.length === 0 && (
+          <StaggeredWrapper delay={0.15}>
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="w-full mt-2 select-none text-center flex flex-col items-center backdrop-blur-xl bg-gradient-to-r from-emerald-500/5 to-blue-500/5 border border-dashed border-emerald-500/30 rounded-2xl px-6 py-5 shadow-lg"
+            >
+              <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400/80 mb-1">
+                Espace Sponsoring Disponible
+              </h3>
+              <p className="text-[10px] text-gray-500 font-medium">Soutenez cet athlète dans sa progression</p>
+            </motion.div>
+          </StaggeredWrapper>
+        )}
+
         {partenaires.length > 0 && (
           <StaggeredWrapper delay={0.18}>
             <div className="w-full flex flex-wrap items-center justify-center gap-3 select-none">
@@ -321,10 +348,7 @@ export default function PublicAthleteProfile() {
         {galleryPhotos.length > 0 && (
           <StaggeredWrapper delay={0.22}>
             <div className="w-full select-none">
-              <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-3 px-1">
-                Galerie Photos
-              </h3>
-              <div className="w-full flex items-center gap-4 overflow-x-auto pb-4 snap-x select-none scrollbar-none">
+              <div className="w-full flex items-center gap-4 overflow-x-auto pb-4 pt-2 snap-x select-none scrollbar-none">
                 {galleryPhotos.map((photo, i) => (
                   <motion.div
                     key={i}
@@ -355,7 +379,7 @@ export default function PublicAthleteProfile() {
           <StaggeredWrapper delay={0.25}>
             <div className="w-full select-none flex flex-col gap-3">
               <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 px-1">
-                Vidéos & Médias
+                Vidéos Présentation
               </h3>
               <div className="flex flex-col gap-4">
                 {videos.map((vid, idx) => (
@@ -364,18 +388,30 @@ export default function PublicAthleteProfile() {
                     whileHover={{ scale: 1.02 }}
                     className="w-full backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-3 shadow-xl hover:border-emerald-500/20 transition-all duration-300 select-none overflow-hidden"
                   >
-                    <p className="text-xs font-bold uppercase tracking-wider text-white mb-2 truncate px-1">
-                      {vid.title}
-                    </p>
-                    <div className="w-full h-44 overflow-hidden rounded-xl border border-white/10">
-                      <iframe
-                        src={formatEmbedUrl(vid.url)}
-                        title={vid.title}
-                        className="w-full h-full border-none select-none"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        loading="lazy"
-                      />
+                    {vid.title && (
+                      <p className="text-xs font-bold uppercase tracking-wider text-white mb-2 truncate px-1">
+                        {vid.title}
+                      </p>
+                    )}
+                    <div className="w-full rounded-xl border border-white/10 overflow-hidden bg-black flex items-center justify-center">
+                      {vid.url.includes("youtube.com") || vid.url.includes("youtu.be") || vid.url.includes("vimeo") ? (
+                        <iframe
+                          src={formatEmbedUrl(vid.url)}
+                          title={vid.title}
+                          className="w-full h-44 border-none select-none"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          loading="lazy"
+                        />
+                      ) : (
+                        <video
+                          src={vid.url}
+                          controls
+                          controlsList="nodownload"
+                          className="w-full max-h-64 object-contain"
+                          preload="metadata"
+                        />
+                      )}
                     </div>
                   </motion.div>
                 ))}
