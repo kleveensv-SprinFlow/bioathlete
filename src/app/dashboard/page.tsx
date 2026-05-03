@@ -68,6 +68,7 @@ export default function DashboardPage() {
   const [profSuccess, setProfSuccess] = useState("");
   const [isPremium, setIsPremium] = useState(false);
   const [showStripeModal, setShowStripeModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Profile enhancements
   const [bioInput, setBioInput] = useState("");
@@ -606,18 +607,25 @@ export default function DashboardPage() {
 
       <div className="relative z-10 max-w-md mx-auto px-5 pt-8 flex flex-col gap-8 min-h-screen">
         {/* Navigation top bar */}
-        <div className="w-full flex items-center justify-between select-none">
-          <Link href="/" className="flex items-center gap-2 text-gray-400 hover:text-emerald-400 font-bold text-xs uppercase tracking-wider transition-colors duration-300">
-            <span>←</span> Retour à l&apos;accueil
-          </Link>
-          {username && (
+        <div className="w-full flex items-center justify-between gap-3 select-none">
+          {username ? (
             <Link
               href={`/u/${username}`}
               target="_blank"
-              className="flex items-center gap-2 text-emerald-400 hover:text-white font-bold text-xs uppercase tracking-wider transition-colors duration-300"
+              className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider text-center rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 shadow-lg select-none"
             >
-              Voir mon profil public <span>↗</span>
+              Voir ma page <span>↗</span>
             </Link>
+          ) : (
+            <span className="flex-1 text-gray-500 font-bold text-xs">Aperçu non disponible</span>
+          )}
+          {username && (
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider text-center rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 select-none"
+            >
+              🔗 Partager ma page
+            </button>
           )}
         </div>
 
@@ -1346,6 +1354,66 @@ export default function DashboardPage() {
                   className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all"
                 >
                   Annuler
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+        {showShareModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-4 select-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="backdrop-blur-2xl bg-neutral-900/90 border border-emerald-500/30 rounded-3xl p-6 shadow-2xl max-w-sm w-full flex flex-col gap-5 border-t-emerald-400"
+            >
+              <div className="flex flex-col select-none">
+                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                  Partager mon profil
+                </span>
+                <h3 className="text-lg font-black text-white tracking-tight leading-snug">
+                  Lien de votre vitrine
+                </h3>
+                <p className="text-gray-400 text-xs">
+                  Partagez ce lien avec vos partenaires, sponsors et clubs pour maximiser votre visibilité.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-2 border-t border-white/5 select-none">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Adresse Web
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${username}`}
+                      className="w-full p-3 bg-neutral-950 border border-white/10 focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white rounded-xl select-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 mt-2">
+                <button
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      navigator.clipboard.writeText(`${window.location.origin}/u/${username}`);
+                      setShareText("Lien copié dans le presse-papier !");
+                      setTimeout(() => setShareText(""), 3000);
+                      setShowShareModal(false);
+                    }
+                  }}
+                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                  📋 Copier le lien
+                </button>
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all"
+                >
+                  Fermer
                 </button>
               </div>
             </motion.div>
