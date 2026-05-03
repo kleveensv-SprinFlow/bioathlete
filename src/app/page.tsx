@@ -1,304 +1,77 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 
-const DEFAULT_ATHLETE = {
-  name: "Sprinteur N1",
-  debut: "Février 2024",
-  disciplines: ["100m", "60m"],
-  biographie: "Athlète passionné visant l'excellence sur les pistes nationales et internationales.",
-  records: [
-    { distance: "60m", temps: "6.55s", competition: "Championnats de France" },
-    { distance: "100m", temps: "9.98s", competition: "Meeting International" },
-  ],
-  links: [
-    {
-      title: "Fédération Française d'Athlétisme",
-      url: "https://www.athle.fr/",
-      icon: "🏅",
-    },
-    {
-      title: "World Athletics",
-      url: "https://worldathletics.org/",
-      icon: "🌐",
-    },
-    {
-      title: "Instagram Officiel",
-      url: "https://instagram.com/",
-      icon: "📸",
-    },
-    {
-      title: "TikTok Officiel",
-      url: "https://tiktok.com/",
-      icon: "🎵",
-    },
-  ],
-  evolution: [
-    { date: "Fév 2024", "100m": 10.45 },
-    { date: "Avr 2024", "100m": 10.32 },
-    { date: "Juin 2024", "100m": 10.15 },
-    { date: "Août 2024", "100m": 10.05 },
-    { date: "Oct 2024", "100m": 9.98 },
-  ],
-  sponsors: [
-    { id: 1, name: "Nike", logo: "👟 Nike" },
-    { id: 2, name: "Red Bull", logo: "🥤 Red Bull" },
-  ],
-};
-
-const SectionWrapper = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 30 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true, margin: "-100px" }}
-    transition={{ duration: 0.6, delay }}
-    className="w-full"
-  >
-    {children}
-  </motion.div>
-);
-
-export default function PublicProfile() {
-  const [mounted, setMounted] = useState(false);
-  const [records, setRecords] = useState(DEFAULT_ATHLETE.records);
-  const [links, setLinks] = useState(DEFAULT_ATHLETE.links);
-  const [evolution, setEvolution] = useState(DEFAULT_ATHLETE.evolution);
-  const [sponsors, setSponsors] = useState(DEFAULT_ATHLETE.sponsors);
-
-  useEffect(() => {
-    setMounted(true);
-
-    async function fetchAndIncrement() {
-      try {
-        await supabase.from("views").insert([{ count: 1 }]);
-
-        const { data: perfData, error: perfErr } = await supabase.from("performances").select("*");
-        if (!perfErr && perfData && perfData.length > 0) {
-          const mappedRecords = perfData.slice(-2).map((p) => ({
-            distance: p.distance,
-            temps: p.temps + "s",
-            competition: p.competition,
-          }));
-          setRecords(mappedRecords);
-
-          const mappedEvolution = perfData.map((p) => ({
-            date: p.date,
-            "100m": parseFloat(p.temps),
-          }));
-          setEvolution(mappedEvolution);
-        }
-
-        const { data: linkData, error: linkErr } = await supabase.from("links").select("*");
-        if (!linkErr && linkData && linkData.length > 0) {
-          setLinks(linkData);
-        }
-
-        const { data: spData, error: spErr } = await supabase.from("sponsors").select("*");
-        if (!spErr && spData && spData.length > 0) {
-          setSponsors(spData);
-        }
-      } catch (err) {
-        console.error("Fetch fallback views/data:", err);
-      }
-    }
-
-    fetchAndIncrement();
-  }, []);
-
+export default function Home() {
   return (
-    <div className="min-h-screen bg-neutral-950 text-white font-sans selection:bg-emerald-500 selection:text-black">
-      {/* Background radial gradients for ambient neon feel */}
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500 selection:text-black flex flex-col justify-between">
+      {/* Background radial glow */}
       <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
-      <div className="relative z-10 max-w-md mx-auto px-5 pt-8 pb-24 flex flex-col items-center gap-8 min-h-screen select-none">
-        
-        {/* Navigation / Top Bar */}
-        <div className="w-full flex items-center justify-between backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 shadow-xl">
-          <Link href="/" className="text-sm font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 hover:opacity-80 transition-opacity">
-            BioAthlete
+      {/* Top Navbar */}
+      <header className="relative z-10 max-w-5xl mx-auto w-full px-6 py-6 flex items-center justify-between select-none">
+        <Link href="/" className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300">
+          BioAthlete
+        </Link>
+        <Link href="/login" className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold rounded-xl text-gray-300 transition-all duration-300 select-none">
+          Espace Athlète
+        </Link>
+      </header>
+
+      {/* Main Hero Section */}
+      <main className="relative z-10 max-w-4xl mx-auto px-6 py-12 flex flex-col items-center text-center gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="flex flex-col gap-4 select-none"
+        >
+          <span className="text-xs font-extrabold tracking-widest text-emerald-400 uppercase">
+            Vitrine Digitale Pour Sportifs
+          </span>
+          <h1 className="text-5xl sm:text-6xl font-black tracking-tight text-white leading-none">
+            Boostez votre <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500">
+              Identité d&apos;Athlète
+            </span>
+          </h1>
+          <p className="text-gray-400 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
+            Créez un profil professionnel, partagez vos records chronométriques, affichez vos sponsors,
+            et générez votre Média Kit en quelques secondes.
+          </p>
+        </motion.div>
+
+        {/* Call to Actions Buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full mt-4 select-none"
+        >
+          <Link
+            href="/login"
+            className="w-full sm:w-auto px-8 py-4 bg-emerald-500 hover:bg-emerald-400 font-black text-sm tracking-wide uppercase text-black rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 text-center select-none"
+          >
+            Créer mon profil
           </Link>
-          <Link href="/login" className="px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold rounded-xl text-gray-300 transition-all duration-300">
-            Espace Athlète
+          <Link
+            href="/login"
+            className="w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-500/20 font-black text-sm tracking-wide uppercase text-white rounded-2xl transition-all duration-300 text-center select-none backdrop-blur-xl"
+          >
+            Se connecter
           </Link>
-        </div>
+        </motion.div>
+      </main>
 
-        {/* Header Profile Info */}
-        <SectionWrapper delay={0.1}>
-          <div className="flex flex-col items-center gap-4 text-center">
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="w-24 h-24 rounded-full bg-gradient-to-tr from-emerald-500 via-emerald-400 to-blue-500 p-1 shadow-xl flex items-center justify-center relative select-none"
-            >
-              <div className="w-full h-full rounded-full bg-neutral-900 flex items-center justify-center font-black text-3xl tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-400">
-                BA
-              </div>
-              <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-400 border-2 border-neutral-950 rounded-full"></span>
-            </motion.div>
-            
-            <div className="flex flex-col gap-1">
-              <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-sm select-none">
-                {DEFAULT_ATHLETE.name}
-              </h1>
-              <p className="text-emerald-400 text-sm font-semibold uppercase tracking-wider select-none">
-                {DEFAULT_ATHLETE.disciplines.join(" &bull; ")}
-              </p>
-              <p className="text-gray-400 text-xs select-none">
-                En activité depuis {DEFAULT_ATHLETE.debut}
-              </p>
-            </div>
-
-            <p className="text-gray-300 text-sm max-w-sm mt-1 px-4 leading-relaxed select-none">
-              {DEFAULT_ATHLETE.biographie}
-            </p>
-          </div>
-        </SectionWrapper>
-
-        {/* Section Sponsors (As elegant circle or rectangle badges) */}
-        <SectionWrapper delay={0.15}>
-          <div className="w-full flex flex-wrap items-center justify-center gap-3">
-            {sponsors.map((sp, idx) => (
-              <motion.div
-                key={idx}
-                whileHover={{ scale: 1.05, y: -2 }}
-                className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2 shadow-lg select-none text-xs font-semibold hover:border-emerald-500/20 transition-all duration-300"
-              >
-                <span>{sp.logo}</span>
-              </motion.div>
-            ))}
-          </div>
-        </SectionWrapper>
-
-        {/* Stats Glassmorphism Blocks */}
-        <SectionWrapper delay={0.2}>
-          <div className="grid grid-cols-2 gap-4 w-full">
-            {records.map((rec, i) => (
-              <motion.div
-                key={i}
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col justify-between gap-1 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] hover:border-emerald-500/30 transition-all duration-300 select-none"
-              >
-                <div className="text-gray-400 font-medium text-xs tracking-wide uppercase select-none">
-                  {rec.distance}
-                </div>
-                <div className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 tracking-tight select-none">
-                  {rec.temps}
-                </div>
-                <div className="text-gray-500 text-[10px] select-none truncate">
-                  {rec.competition}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </SectionWrapper>
-
-        {/* Graphique de Performance */}
-        <SectionWrapper delay={0.3}>
-          <div className="w-full h-[300px] backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] hover:border-emerald-500/20 transition-colors duration-300 select-none">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-4 select-none">
-              Progression Chronométrique (100m)
-            </h3>
-            <div className="w-full h-[220px]">
-              {mounted && (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={evolution}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fill: '#a3a3a3', fontSize: 10 }} 
-                      axisLine={{ stroke: '#404040' }} 
-                      tickLine={{ stroke: '#404040' }}
-                    />
-                    <YAxis 
-                      domain={['dataMin - 0.1', 'dataMax + 0.1']} 
-                      tick={{ fill: '#a3a3a3', fontSize: 10 }} 
-                      axisLine={{ stroke: '#404040' }} 
-                      tickLine={{ stroke: '#404040' }}
-                      reversed
-                    />
-                    <Tooltip 
-                      contentStyle={{ background: '#171717', border: '1px solid #404040', borderRadius: '8px' }} 
-                      labelStyle={{ color: '#a3a3a3', fontSize: 11 }} 
-                      itemStyle={{ color: '#10b981', fontSize: 12 }} 
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="100m" 
-                      stroke="url(#gradient-line)" 
-                      strokeWidth={3} 
-                      dot={{ r: 4, stroke: '#10b981', strokeWidth: 2, fill: '#171717' }} 
-                      activeDot={{ r: 6, fill: '#10b981' }} 
-                    />
-                    <defs>
-                      <linearGradient id="gradient-line" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#10b981" />
-                        <stop offset="100%" stopColor="#3b82f6" />
-                      </linearGradient>
-                    </defs>
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
-        </SectionWrapper>
-
-        {/* Liens de Sources Officielles (Linktree Premium style) */}
-        <SectionWrapper delay={0.4}>
-          <div className="flex flex-col gap-3 w-full">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 px-1 select-none">
-              Réseaux & Sources
-            </h3>
-            {links.map((link, idx) => (
-              <motion.a
-                key={idx}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.02, x: 2 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full flex items-center justify-between p-4 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-white/20 hover:shadow-[0_4px_24px_rgba(16,185,129,0.1)] transition-all duration-300 group select-none"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-neutral-900 border border-white/5 group-hover:border-white/10 transition-colors text-xl">
-                    {link.icon}
-                  </div>
-                  <span className="font-semibold text-sm text-gray-200 group-hover:text-white transition-colors">
-                    {link.title}
-                  </span>
-                </div>
-                <span className="text-gray-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300">
-                  ↗
-                </span>
-              </motion.a>
-            ))}
-          </div>
-        </SectionWrapper>
-
-        {/* Footer */}
-        <SectionWrapper delay={0.5}>
-          <footer className="text-center mt-6 select-none">
-            <p className="text-[10px] text-gray-600 font-medium uppercase tracking-widest flex items-center justify-center gap-1">
-              Optimisé par <span className="text-emerald-500/80 font-bold">BioAthlete.space</span>
-            </p>
-          </footer>
-        </SectionWrapper>
-
-      </div>
+      {/* Footer */}
+      <footer className="relative z-10 max-w-5xl mx-auto w-full px-6 py-8 text-center select-none border-t border-white/5">
+        <p className="text-[11px] text-gray-600 font-medium tracking-widest flex items-center justify-center gap-1">
+          Optimisé par <span className="text-emerald-500 font-bold">BioAthlete.space</span>
+        </p>
+      </footer>
     </div>
   );
 }

@@ -6,8 +6,6 @@ import { motion, useScroll, useSpring } from "framer-motion";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -17,48 +15,44 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const DEFAULT_ATHLETE = {
-  name: "Sprinteur N1",
-  debut: "Février 2024",
-  disciplines: ["100m", "60m"],
-  biographie: "Athlète passionné visant l'excellence sur les pistes nationales et internationales.",
-  records: [
-    { distance: "60m", temps: "6.55s", competition: "Championnats de France" },
-    { distance: "100m", temps: "9.98s", competition: "Meeting International" },
-  ],
-  links: [
-    {
-      title: "Fédération Française d'Athlétisme",
-      url: "https://www.athle.fr/",
-      icon: "🏅",
-    },
-    {
-      title: "World Athletics",
-      url: "https://worldathletics.org/",
-      icon: "🌐",
-    },
-  ],
-  evolution: [
-    { date: "Fév 2024", "100m": 10.45 },
-    { date: "Avr 2024", "100m": 10.32 },
-    { date: "Juin 2024", "100m": 10.15 },
-    { date: "Août 2024", "100m": 10.05 },
-    { date: "Oct 2024", "100m": 9.98 },
-  ],
-  sponsors: [
-    { id: 1, name: "Nike", logo: "👟 Nike" },
-    { id: 2, name: "Red Bull", logo: "🥤 Red Bull" },
-  ],
-  photos: [
-    { title: "Entraînement", url: "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=400&q=80" },
-    { title: "Course", url: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=400&q=80" },
-    { title: "Stade", url: "https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=400&q=80" },
-  ],
-};
+interface Record {
+  distance: string;
+  temps: string;
+  competition: string;
+}
+
+interface SocialLink {
+  title: string;
+  url: string;
+  icon: string;
+}
+
+interface Sponsor {
+  id: string | number;
+  name: string;
+  logo: string;
+}
+
+interface Video {
+  id: string | number;
+  url: string;
+  title: string;
+}
+
+interface EvolutionPoint {
+  date: string;
+  "100m": number;
+}
+
+const DEFAULT_PHOTOS = [
+  { title: "Entraînement", url: "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=400&q=80" },
+  { title: "Course", url: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=400&q=80" },
+  { title: "Stade", url: "https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=400&q=80" },
+];
 
 const StaggeredWrapper = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
   <motion.div
-    initial={{ opacity: 0, y: 40 }}
+    initial={{ opacity: 0, y: 30 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true, margin: "-50px" }}
     transition={{ duration: 0.6, delay, ease: "easeOut" }}
@@ -73,11 +67,14 @@ export default function PublicAthleteProfile() {
   const username = params?.username as string;
 
   const [mounted, setMounted] = useState(false);
-  const [records, setRecords] = useState(DEFAULT_ATHLETE.records);
-  const [links, setLinks] = useState(DEFAULT_ATHLETE.links);
-  const [evolution, setEvolution] = useState(DEFAULT_ATHLETE.evolution);
-  const [sponsors, setSponsors] = useState(DEFAULT_ATHLETE.sponsors);
-  const [videos, setVideos] = useState<any[]>([]);
+  const [profileNotFound, setProfileNotFound] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const [records, setRecords] = useState<Record[]>([]);
+  const [links, setLinks] = useState<SocialLink[]>([]);
+  const [evolution, setEvolution] = useState<EvolutionPoint[]>([]);
+  const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
 
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
@@ -90,21 +87,30 @@ export default function PublicAthleteProfile() {
     setMounted(true);
 
     async function fetchAthleteByUsername() {
-      if (!username) return;
+      if (!username) {
+        setLoading(false);
+        return;
+      }
 
       try {
         await supabase.from("views").insert([{ count: 1 }]);
 
+        // Fetch profile
         const { data: profile, error: profErr } = await supabase
           .from("profiles")
           .select("user_id")
-          .eq("username", username)
+          .eq("username", username.toLowerCase())
           .maybeSingle();
 
-        if (profErr || !profile?.user_id) return;
+        if (profErr || !profile?.user_id) {
+          setProfileNotFound(true);
+          setLoading(false);
+          return;
+        }
 
         const uid = profile.user_id;
 
+        // Fetch records and evolution
         const { data: perfData, error: perfErr } = await supabase
           .from("performances")
           .select("*")
@@ -114,7 +120,7 @@ export default function PublicAthleteProfile() {
           const mappedRecords = perfData.slice(-2).map((p) => ({
             distance: p.distance,
             temps: p.temps + "s",
-            competition: p.competition,
+            competition: p.competition || "Meeting",
           }));
           setRecords(mappedRecords);
 
@@ -125,41 +131,37 @@ export default function PublicAthleteProfile() {
           setEvolution(mappedEvolution);
         }
 
+        // Fetch links
         const { data: linkData, error: linkErr } = await supabase
           .from("links")
           .select("*")
           .eq("user_id", uid);
+        if (!linkErr && linkData) setLinks(linkData);
 
-        if (!linkErr && linkData && linkData.length > 0) {
-          setLinks(linkData);
-        }
-
+        // Fetch sponsors
         const { data: spData, error: spErr } = await supabase
           .from("sponsors")
           .select("*")
           .eq("user_id", uid);
+        if (!spErr && spData) setSponsors(spData);
 
-        if (!spErr && spData && spData.length > 0) {
-          setSponsors(spData);
-        }
-
+        // Fetch videos
         const { data: vidData, error: vidErr } = await supabase
           .from("videos")
           .select("*")
           .eq("user_id", uid);
+        if (!vidErr && vidData) setVideos(vidData);
 
-        if (!vidErr && vidData) {
-          setVideos(vidData);
-        }
       } catch (err) {
-        console.error("Fetch profile fallback err:", err);
+        console.error("Fetch profile err:", err);
+      } finally {
+        setLoading(false);
       }
     }
 
     fetchAthleteByUsername();
   }, [username]);
 
-  // Transform video URL into an embed URL
   const formatEmbedUrl = (url: string) => {
     try {
       if (url.includes("youtube.com") || url.includes("youtu.be")) {
@@ -177,6 +179,32 @@ export default function PublicAthleteProfile() {
       return url;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
+        <p className="text-gray-500 text-xs tracking-wider uppercase animate-pulse select-none">
+          Chargement du profil...
+        </p>
+      </div>
+    );
+  }
+
+  if (profileNotFound) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-6 font-sans px-5 text-center select-none">
+        <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 tracking-tight">
+          Athlète non trouvé
+        </h2>
+        <p className="text-gray-400 text-sm max-w-xs leading-relaxed">
+          Le profil que vous cherchez n&apos;existe pas ou a été désactivé.
+        </p>
+        <Link href="/" className="px-6 py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold rounded-xl text-emerald-400 tracking-wide uppercase transition-all duration-300">
+          ← Retour à l&apos;accueil
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500 selection:text-black">
@@ -219,30 +247,30 @@ export default function PublicAthleteProfile() {
             
             <div className="flex flex-col gap-1 select-none">
               <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-md uppercase">
-                {username || DEFAULT_ATHLETE.name}
+                {username}
               </h1>
               <p className="text-emerald-400 text-sm font-extrabold uppercase tracking-widest select-none">
-                {DEFAULT_ATHLETE.disciplines.join(" • ")}
+                Sprint • Performance
               </p>
               <p className="text-gray-400 text-xs select-none">
-                En activité depuis {DEFAULT_ATHLETE.debut}
+                En activité
               </p>
             </div>
 
             <p className="text-gray-300 text-sm max-w-sm mt-1 px-4 leading-relaxed select-none">
-              {DEFAULT_ATHLETE.biographie}
+              Athlète passionné visant l&apos;excellence sur les pistes nationales et internationales.
             </p>
           </div>
         </StaggeredWrapper>
 
-        {/* Horizontal Sticky Gallery using native Framer Motion features or beautiful Horizontal overflow layout */}
+        {/* Horizontal Gallery */}
         <StaggeredWrapper delay={0.15}>
           <div className="w-full select-none">
             <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-3 px-1">
               Galerie Photos
             </h3>
             <div className="w-full flex items-center gap-4 overflow-x-auto pb-4 snap-x select-none scrollbar-none">
-              {DEFAULT_ATHLETE.photos.map((photo, i) => (
+              {DEFAULT_PHOTOS.map((photo, i) => (
                 <motion.div
                   key={i}
                   whileHover={{ scale: 1.03 }}
@@ -251,6 +279,8 @@ export default function PublicAthleteProfile() {
                   <img
                     src={photo.url}
                     alt={photo.title}
+                    width={200}
+                    height={112}
                     className="w-full h-28 object-cover select-none pointer-events-none"
                     loading="lazy"
                   />
@@ -264,22 +294,24 @@ export default function PublicAthleteProfile() {
         </StaggeredWrapper>
 
         {/* Sponsors Badges */}
-        <StaggeredWrapper delay={0.2}>
-          <div className="w-full flex flex-wrap items-center justify-center gap-3 select-none">
-            {sponsors.map((sp, idx) => (
-              <motion.div
-                key={idx}
-                whileHover={{ scale: 1.1, y: -3 }}
-                whileTap={{ scale: 0.95 }}
-                className="backdrop-blur-xl bg-white/5 border border-white/10 hover:border-emerald-500/30 rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg select-none text-xs font-bold hover:shadow-[0_4px_24px_rgba(16,185,129,0.15)] transition-all duration-300"
-              >
-                <span>{sp.logo}</span>
-              </motion.div>
-            ))}
-          </div>
-        </StaggeredWrapper>
+        {sponsors.length > 0 && (
+          <StaggeredWrapper delay={0.2}>
+            <div className="w-full flex flex-wrap items-center justify-center gap-3 select-none">
+              {sponsors.map((sp, idx) => (
+                <motion.div
+                  key={idx}
+                  whileHover={{ scale: 1.1, y: -3 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="backdrop-blur-xl bg-white/5 border border-white/10 hover:border-emerald-500/30 rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg select-none text-xs font-bold hover:shadow-[0_4px_24px_rgba(16,185,129,0.15)] transition-all duration-300"
+                >
+                  <span>{sp.logo}</span>
+                </motion.div>
+              ))}
+            </div>
+          </StaggeredWrapper>
+        )}
 
-        {/* Section Vidéos : External Embeds Grid with Lazy loading */}
+        {/* Vidéos Externes */}
         {videos.length > 0 && (
           <StaggeredWrapper delay={0.25}>
             <div className="w-full select-none flex flex-col gap-3">
@@ -314,115 +346,121 @@ export default function PublicAthleteProfile() {
         )}
 
         {/* Stats Glassmorphism Blocks */}
-        <StaggeredWrapper delay={0.3}>
-          <div className="grid grid-cols-2 gap-4 w-full select-none">
-            {records.map((rec, i) => (
-              <motion.div
-                key={i}
-                whileHover={{ scale: 1.05, y: -4 }}
-                whileTap={{ scale: 0.98 }}
-                className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col justify-between gap-1 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] hover:border-emerald-500/30 transition-all duration-300 select-none"
-              >
-                <div className="text-gray-400 font-extrabold text-xs tracking-wider uppercase">
-                  {rec.distance}
-                </div>
-                <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 tracking-tight">
-                  {rec.temps}
-                </div>
-                <div className="text-gray-500 text-[10px] select-none truncate">
-                  {rec.competition}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </StaggeredWrapper>
-
-        {/* Graphique de Performance : Gradient Area Chart */}
-        <StaggeredWrapper delay={0.4}>
-          <div className="w-full h-[320px] backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-5 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] hover:border-emerald-500/30 transition-all duration-300 select-none">
-            <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-4 select-none">
-              Progression Chronométrique (100m)
-            </h3>
-            <div className="w-full h-[230px] select-none">
-              {mounted && (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={evolution}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fill: '#888888', fontSize: 10 }} 
-                      axisLine={{ stroke: '#2c2c2c' }} 
-                      tickLine={{ stroke: '#2c2c2c' }}
-                    />
-                    <YAxis 
-                      domain={['dataMin - 0.1', 'dataMax + 0.1']} 
-                      tick={{ fill: '#888888', fontSize: 10 }} 
-                      axisLine={{ stroke: '#2c2c2c' }} 
-                      tickLine={{ stroke: '#2c2c2c' }}
-                      reversed
-                    />
-                    <Tooltip 
-                      contentStyle={{ background: '#000000', border: '1px solid #333333', borderRadius: '12px' }} 
-                      labelStyle={{ color: '#888888', fontSize: 11 }} 
-                      itemStyle={{ color: '#10b981', fontSize: 12 }} 
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="100m"
-                      stroke="url(#gradient-line)"
-                      strokeWidth={3}
-                      fillOpacity={1}
-                      fill="url(#gradient-area)"
-                      activeDot={{ r: 8, fill: '#10b981', stroke: '#000000', strokeWidth: 2 }}
-                    />
-                    <defs>
-                      <linearGradient id="gradient-line" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#10b981" />
-                        <stop offset="100%" stopColor="#3b82f6" />
-                      </linearGradient>
-                      <linearGradient id="gradient-area" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
-                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
-        </StaggeredWrapper>
-
-        {/* Liens de Sources Officielles (Linktree Premium style) */}
-        <StaggeredWrapper delay={0.5}>
-          <div className="flex flex-col gap-3 w-full select-none">
-            <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 px-1">
-              Réseaux & Sources
-            </h3>
-            {links.map((link, idx) => (
-              <motion.a
-                key={idx}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.03, x: 2 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full flex items-center justify-between p-4 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-white/20 hover:shadow-[0_4px_24px_rgba(16,185,129,0.1)] transition-all duration-300 group select-none"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-black border border-white/5 group-hover:border-white/15 transition-colors text-xl">
-                    {link.icon}
+        {records.length > 0 && (
+          <StaggeredWrapper delay={0.3}>
+            <div className="grid grid-cols-2 gap-4 w-full select-none">
+              {records.map((rec, i) => (
+                <motion.div
+                  key={i}
+                  whileHover={{ scale: 1.05, y: -4 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col justify-between gap-1 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] hover:border-emerald-500/30 transition-all duration-300 select-none"
+                >
+                  <div className="text-gray-400 font-extrabold text-xs tracking-wider uppercase">
+                    {rec.distance}
                   </div>
-                  <span className="font-extrabold text-sm text-gray-200 group-hover:text-white transition-colors">
-                    {link.title}
+                  <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 tracking-tight">
+                    {rec.temps}
+                  </div>
+                  <div className="text-gray-500 text-[10px] select-none truncate">
+                    {rec.competition}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </StaggeredWrapper>
+        )}
+
+        {/* Graphique de Performance */}
+        {evolution.length > 0 && (
+          <StaggeredWrapper delay={0.4}>
+            <div className="w-full h-[320px] backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-5 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] hover:border-emerald-500/30 transition-all duration-300 select-none">
+              <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-4 select-none">
+                Progression Chronométrique (100m)
+              </h3>
+              <div className="w-full h-[230px] select-none">
+                {mounted && (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={evolution}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fill: '#888888', fontSize: 10 }} 
+                        axisLine={{ stroke: '#2c2c2c' }} 
+                        tickLine={{ stroke: '#2c2c2c' }}
+                      />
+                      <YAxis 
+                        domain={['dataMin - 0.1', 'dataMax + 0.1']} 
+                        tick={{ fill: '#888888', fontSize: 10 }} 
+                        axisLine={{ stroke: '#2c2c2c' }} 
+                        tickLine={{ stroke: '#2c2c2c' }}
+                        reversed
+                      />
+                      <Tooltip 
+                        contentStyle={{ background: '#000000', border: '1px solid #333333', borderRadius: '12px' }} 
+                        labelStyle={{ color: '#888888', fontSize: 11 }} 
+                        itemStyle={{ color: '#10b981', fontSize: 12 }} 
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="100m"
+                        stroke="url(#gradient-line)"
+                        strokeWidth={3}
+                        fillOpacity={1}
+                        fill="url(#gradient-area)"
+                        activeDot={{ r: 8, fill: '#10b981', stroke: '#000000', strokeWidth: 2 }}
+                      />
+                      <defs>
+                        <linearGradient id="gradient-line" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#10b981" />
+                          <stop offset="100%" stopColor="#3b82f6" />
+                        </linearGradient>
+                        <linearGradient id="gradient-area" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
+                          <stop offset="100%" stopColor="#10b981" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </StaggeredWrapper>
+        )}
+
+        {/* Liens de Sources Officielles */}
+        {links.length > 0 && (
+          <StaggeredWrapper delay={0.5}>
+            <div className="flex flex-col gap-3 w-full select-none">
+              <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 px-1">
+                Réseaux & Sources
+              </h3>
+              {links.map((link, idx) => (
+                <motion.a
+                  key={idx}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.03, x: 2 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full flex items-center justify-between p-4 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-white/20 hover:shadow-[0_4px_24px_rgba(16,185,129,0.1)] transition-all duration-300 group select-none"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-black border border-white/5 group-hover:border-white/15 transition-colors text-xl">
+                      {link.icon}
+                    </div>
+                    <span className="font-extrabold text-sm text-gray-200 group-hover:text-white transition-colors">
+                      {link.title}
+                    </span>
+                  </div>
+                  <span className="text-gray-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300">
+                    ↗
                   </span>
-                </div>
-                <span className="text-gray-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300">
-                  ↗
-                </span>
-              </motion.a>
-            ))}
-          </div>
-        </StaggeredWrapper>
+                </motion.a>
+              ))}
+            </div>
+          </StaggeredWrapper>
+        )}
 
         {/* Footer */}
         <StaggeredWrapper delay={0.6}>
