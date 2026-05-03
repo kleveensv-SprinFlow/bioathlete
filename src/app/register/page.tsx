@@ -100,7 +100,7 @@ export default function RegisterPage() {
             <div className="p-3 backdrop-blur-xl bg-white/5 border border-white/5 rounded-2xl flex flex-col gap-1 text-left">
               <span className="text-[8px] uppercase tracking-wider text-gray-500 font-bold">Sponsors</span>
               <span className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-400">
-                Nike • Puma
+                SpikeSpeed
               </span>
             </div>
           </div>
