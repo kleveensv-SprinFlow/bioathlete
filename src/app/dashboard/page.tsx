@@ -83,6 +83,8 @@ export default function DashboardPage() {
   const [newVideoUrl, setNewVideoUrl] = useState("");
   const [newVideoTitle, setNewVideoTitle] = useState("");
 
+  const [shareText, setShareText] = useState("");
+
   // Load user data and content
   useEffect(() => {
     async function loadUserAndContent() {
@@ -279,6 +281,14 @@ export default function DashboardPage() {
     setNewVideoTitle("");
   };
 
+  const handleShareProfile = () => {
+    if (!username) return;
+    const profileUrl = `${window.location.origin}/u/${username}`;
+    navigator.clipboard.writeText(profileUrl);
+    setShareText("Lien copié dans le presse-papier !");
+    setTimeout(() => setShareText(""), 3000);
+  };
+
   const handleRemovePerformance = async (id: string | undefined, i: number) => {
     if (id) {
       try {
@@ -387,6 +397,21 @@ export default function DashboardPage() {
             Déconnexion
           </button>
         </div>
+
+        {/* Partager mon profil URL button */}
+        {username && (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleShareProfile}
+            className="w-full py-4 bg-gradient-to-tr from-emerald-500/10 to-blue-500/10 hover:from-emerald-500/20 hover:to-blue-500/20 border border-emerald-500/30 hover:border-emerald-500/50 font-extrabold text-sm text-center text-white rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.15)] transition-all duration-300 tracking-wide uppercase select-none flex items-center justify-center gap-2"
+          >
+            🔗 Partager mon profil
+          </motion.button>
+        )}
+        {shareText && (
+          <p className="text-center text-xs text-emerald-400 font-semibold select-none -mt-5">{shareText}</p>
+        )}
 
         {/* Configuration Username */}
         <motion.div
