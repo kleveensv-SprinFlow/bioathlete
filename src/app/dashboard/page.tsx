@@ -31,6 +31,13 @@ interface Sponsor {
   user_id?: string;
 }
 
+interface Video {
+  id: string | number;
+  url: string;
+  title: string;
+  user_id?: string;
+}
+
 const PREDEFINED_SPONSORS = [
   { name: "Nike", logo: "👟 Nike" },
   { name: "Adidas", logo: "👟 Adidas" },
@@ -57,6 +64,7 @@ export default function DashboardPage() {
   const [performances, setPerformances] = useState<Performance[]>([]);
   const [links, setLinks] = useState<SocialLink[]>([]);
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
   const [views, setViews] = useState(0);
 
   // Form states
@@ -71,6 +79,9 @@ export default function DashboardPage() {
 
   const [selectedSponsor, setSelectedSponsor] = useState("Nike");
   const [customSponsorName, setCustomSponsorName] = useState("");
+
+  const [newVideoUrl, setNewVideoUrl] = useState("");
+  const [newVideoTitle, setNewVideoTitle] = useState("");
 
   // Load user data and content
   useEffect(() => {
@@ -115,6 +126,12 @@ export default function DashboardPage() {
           .select("*")
           .eq("user_id", uid);
         if (!spErr && spData) setSponsors(spData);
+
+        const { data: vidData, error: vidErr } = await supabase
+          .from("videos")
+          .select("*")
+          .eq("user_id", uid);
+        if (!vidErr && vidData) setVideos(vidData);
 
         const { data: viewData, error: viewErr } = await supabase
           .from("views")
@@ -237,6 +254,31 @@ export default function DashboardPage() {
     setCustomSponsorName("");
   };
 
+  const handleAddVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newVideoUrl || !userId) return;
+
+    const newItem: Omit<Video, "id"> = {
+      url: newVideoUrl,
+      title: newVideoTitle || "Vidéo d'athlétisme",
+      user_id: userId,
+    };
+
+    try {
+      const { data, error } = await supabase.from("videos").insert([newItem]).select();
+      if (!error && data && data.length > 0) {
+        setVideos([...videos, data[0]]);
+      } else {
+        setVideos([...videos, { ...newItem, id: Date.now().toString() }]);
+      }
+    } catch (err) {
+      setVideos([...videos, { ...newItem, id: Date.now().toString() }]);
+    }
+
+    setNewVideoUrl("");
+    setNewVideoTitle("");
+  };
+
   const handleRemovePerformance = async (id: string | undefined, i: number) => {
     if (id) {
       try {
@@ -268,6 +310,17 @@ export default function DashboardPage() {
       }
     }
     setSponsors(sponsors.filter((_, idx) => idx !== i));
+  };
+
+  const handleRemoveVideo = async (id: string | number, i: number) => {
+    if (id && typeof id === "string") {
+      try {
+        await supabase.from("videos").delete().eq("id", id);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    setVideos(videos.filter((_, idx) => idx !== i));
   };
 
   const handleLogout = async () => {
@@ -302,23 +355,6 @@ export default function DashboardPage() {
     doc.text(`Nom de l'athlète : ${username || "Sprinteur N1"}`, 20, 75);
     doc.text("Activités sportives : 100m, 60m", 20, 82);
 
-    doc.setFontSize(14);
-    doc.setTextColor(16, 185, 129);
-    doc.text("RECORDS HISTORIQUES", 20, 100);
-
-    let currentY = 112;
-    performances.forEach((perf) => {
-      doc.setFontSize(11);
-      doc.setTextColor(255, 255, 255);
-      doc.text(`${perf.distance} - ${perf.temps}s`, 20, currentY);
-
-      doc.setFontSize(10);
-      doc.setTextColor(150, 150, 150);
-      doc.text(`${perf.competition} (${perf.date})`, 20, currentY + 6);
-
-      currentY += 16;
-    });
-
     doc.save("Media_Kit_BioAthlete.pdf");
   };
 
@@ -352,7 +388,7 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* Configuration Username (Dynamic profile URL) */}
+        {/* Configuration Username */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -461,7 +497,6 @@ export default function DashboardPage() {
             </button>
           </form>
 
-          {/* Liste des Sponsors actuels */}
           <div className="flex flex-col gap-2 mt-4">
             {sponsors.map((sp, i) => (
               <div
@@ -478,6 +513,78 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={() => handleRemoveSponsor(sp.id, i)}
+                  className="text-gray-600 hover:text-red-400 text-xs font-semibold px-2"
+                >
+                  Supprimer
+                </button>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Section Vidéos */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl select-none"
+        >
+          <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400 mb-4 select-none">
+            Gestion des Vidéos Externes
+          </h2>
+          <form onSubmit={handleAddVideo} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                Titre de la vidéo
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: Finale 100m Olympique"
+                value={newVideoTitle}
+                onChange={(e) => setNewVideoTitle(e.target.value)}
+                className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                URL de la vidéo (YouTube, Vimeo, etc.)
+              </label>
+              <input
+                type="url"
+                placeholder="Ex: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                value={newVideoUrl}
+                onChange={(e) => setNewVideoUrl(e.target.value)}
+                className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-emerald-500 font-extrabold text-xs tracking-wider uppercase text-black rounded-xl hover:shadow-[0_4px_16px_rgba(16,185,129,0.25)] transition-all duration-300 mt-1 select-none"
+            >
+              Ajouter Vidéo
+            </button>
+          </form>
+
+          {/* Liste des Vidéos actuelles */}
+          <div className="flex flex-col gap-2 mt-4">
+            {videos.map((vid, i) => (
+              <div
+                key={vid.id}
+                className="w-full flex items-center justify-between p-3 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all duration-300"
+              >
+                <div className="flex flex-col select-none">
+                  <span className="font-semibold text-sm text-white block">
+                    {vid.title}
+                  </span>
+                  <span className="text-[10px] text-gray-500 truncate max-w-[180px] block">
+                    {vid.url}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleRemoveVideo(vid.id, i)}
                   className="text-gray-600 hover:text-red-400 text-xs font-semibold px-2"
                 >
                   Supprimer

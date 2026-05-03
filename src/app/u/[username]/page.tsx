@@ -37,11 +37,6 @@ const DEFAULT_ATHLETE = {
       url: "https://worldathletics.org/",
       icon: "🌐",
     },
-    {
-      title: "Instagram Officiel",
-      url: "https://instagram.com/",
-      icon: "📸",
-    },
   ],
   evolution: [
     { date: "Fév 2024", "100m": 10.45 },
@@ -54,14 +49,19 @@ const DEFAULT_ATHLETE = {
     { id: 1, name: "Nike", logo: "👟 Nike" },
     { id: 2, name: "Red Bull", logo: "🥤 Red Bull" },
   ],
+  photos: [
+    { title: "Entraînement", url: "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=400&q=80" },
+    { title: "Course", url: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=400&q=80" },
+    { title: "Stade", url: "https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=400&q=80" },
+  ],
 };
 
-// Entrance Stagger Effect Component
 const StaggeredWrapper = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
   <motion.div
     initial={{ opacity: 0, y: 40 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.7, delay, ease: "easeOut" }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, margin: "-50px" }}
+    transition={{ duration: 0.6, delay, ease: "easeOut" }}
     className="w-full"
   >
     {children}
@@ -77,8 +77,8 @@ export default function PublicAthleteProfile() {
   const [links, setLinks] = useState(DEFAULT_ATHLETE.links);
   const [evolution, setEvolution] = useState(DEFAULT_ATHLETE.evolution);
   const [sponsors, setSponsors] = useState(DEFAULT_ATHLETE.sponsors);
+  const [videos, setVideos] = useState<any[]>([]);
 
-  // Discrete scroll progress bar at the top
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
@@ -142,6 +142,15 @@ export default function PublicAthleteProfile() {
         if (!spErr && spData && spData.length > 0) {
           setSponsors(spData);
         }
+
+        const { data: vidData, error: vidErr } = await supabase
+          .from("videos")
+          .select("*")
+          .eq("user_id", uid);
+
+        if (!vidErr && vidData) {
+          setVideos(vidData);
+        }
       } catch (err) {
         console.error("Fetch profile fallback err:", err);
       }
@@ -149,6 +158,25 @@ export default function PublicAthleteProfile() {
 
     fetchAthleteByUsername();
   }, [username]);
+
+  // Transform video URL into an embed URL
+  const formatEmbedUrl = (url: string) => {
+    try {
+      if (url.includes("youtube.com") || url.includes("youtu.be")) {
+        const urlObj = new URL(url);
+        let videoId = "";
+        if (url.includes("youtu.be")) {
+          videoId = urlObj.pathname.slice(1);
+        } else {
+          videoId = urlObj.searchParams.get("v") || "";
+        }
+        return `https://www.youtube.com/embed/${videoId}`;
+      }
+      return url;
+    } catch {
+      return url;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500 selection:text-black">
@@ -207,7 +235,35 @@ export default function PublicAthleteProfile() {
           </div>
         </StaggeredWrapper>
 
-        {/* Sponsors Badges with Parallax / Stagger Entrance */}
+        {/* Horizontal Sticky Gallery using native Framer Motion features or beautiful Horizontal overflow layout */}
+        <StaggeredWrapper delay={0.15}>
+          <div className="w-full select-none">
+            <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-3 px-1">
+              Galerie Photos
+            </h3>
+            <div className="w-full flex items-center gap-4 overflow-x-auto pb-4 snap-x select-none scrollbar-none">
+              {DEFAULT_ATHLETE.photos.map((photo, i) => (
+                <motion.div
+                  key={i}
+                  whileHover={{ scale: 1.03 }}
+                  className="w-[200px] flex-shrink-0 snap-center backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-lg select-none"
+                >
+                  <img
+                    src={photo.url}
+                    alt={photo.title}
+                    className="w-full h-28 object-cover select-none pointer-events-none"
+                    loading="lazy"
+                  />
+                  <div className="p-3 text-[11px] font-bold text-gray-300 text-center uppercase tracking-wide">
+                    {photo.title}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </StaggeredWrapper>
+
+        {/* Sponsors Badges */}
         <StaggeredWrapper delay={0.2}>
           <div className="w-full flex flex-wrap items-center justify-center gap-3 select-none">
             {sponsors.map((sp, idx) => (
@@ -222,6 +278,40 @@ export default function PublicAthleteProfile() {
             ))}
           </div>
         </StaggeredWrapper>
+
+        {/* Section Vidéos : External Embeds Grid with Lazy loading */}
+        {videos.length > 0 && (
+          <StaggeredWrapper delay={0.25}>
+            <div className="w-full select-none flex flex-col gap-3">
+              <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 px-1">
+                Vidéos & Médias
+              </h3>
+              <div className="flex flex-col gap-4">
+                {videos.map((vid, idx) => (
+                  <motion.div
+                    key={idx}
+                    whileHover={{ scale: 1.02 }}
+                    className="w-full backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-3 shadow-xl hover:border-emerald-500/20 transition-all duration-300 select-none overflow-hidden"
+                  >
+                    <p className="text-xs font-bold uppercase tracking-wider text-white mb-2 truncate px-1">
+                      {vid.title}
+                    </p>
+                    <div className="w-full h-44 overflow-hidden rounded-xl border border-white/10">
+                      <iframe
+                        src={formatEmbedUrl(vid.url)}
+                        title={vid.title}
+                        className="w-full h-full border-none select-none"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        loading="lazy"
+                      />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </StaggeredWrapper>
+        )}
 
         {/* Stats Glassmorphism Blocks */}
         <StaggeredWrapper delay={0.3}>
