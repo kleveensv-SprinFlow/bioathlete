@@ -91,6 +91,7 @@ export default function DashboardPage() {
   const [isPremium, setIsPremium] = useState(false);
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showAddPerfModal, setShowAddPerfModal] = useState(false);
 
   // Profile enhancements
   const [bioInput, setBioInput] = useState("");
@@ -905,167 +906,73 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col gap-6 w-full"
           >
-            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl select-none">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400 mb-4 select-none">
-                Ajouter une performance
-              </h2>
-              <form onSubmit={handleAddPerformance} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Catégorie de discipline
-                  </label>
-                  <div className="flex flex-wrap gap-1.5 p-1 bg-neutral-900/50 border border-white/5 rounded-2xl">
-                    {Object.keys(ATHLETIC_DISCIPLINES).map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => {
-                          setSelectedDisciplineCategory(cat);
-                          setNewDistance("");
-                        }}
-                        className={`flex-1 min-w-[90px] px-2.5 py-2 text-[9px] font-black tracking-wider uppercase rounded-xl transition-all duration-300 select-none ${
-                          selectedDisciplineCategory === cat
-                            ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
-                            : "text-gray-400 hover:text-white hover:bg-white/5"
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                      Discipline
-                    </label>
-                    <select
-                      value={newDistance}
-                      onChange={(e) => {
-                        setNewDistance(e.target.value);
-                        if (e.target.value !== "Autre") {
-                          setCustomDiscipline("");
-                        }
-                      }}
-                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white"
-                      required
-                    >
-                      <option value="">-- Choisir --</option>
-                      {ATHLETIC_DISCIPLINES[selectedDisciplineCategory]?.map((d) => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                      <option value="Autre">Autre (personnalisé)</option>
-                    </select>
-                    {newDistance === "Autre" && (
-                      <input
-                        type="text"
-                        placeholder="Ex: 1000m"
-                        value={customDiscipline}
-                        onChange={(e) => setCustomDiscipline(e.target.value)}
-                        className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600 mt-1"
-                        required
-                      />
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                      Chrono / Perf
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="9.98"
-                      value={newTemps}
-                      onChange={(e) => setNewTemps(e.target.value)}
-                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      value={newDate}
-                      onChange={(e) => setNewDate(e.target.value)}
-                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                      Compétition
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Championnats"
-                      value={newComp}
-                      onChange={(e) => setNewComp(e.target.value)}
-                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
-                    />
-                  </div>
-                </div>
-
-                {["Sprint & Haies", "Sauts"].includes(selectedDisciplineCategory) && (
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1 flex justify-between select-none">
-                      <span>Vent (m/s)</span>
-                      <span className="text-[9px] text-gray-600 font-normal lowercase tracking-normal">Optionnel</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: +1.2 ou -0.5"
-                      value={newWind}
-                      onChange={(e) => setNewWind(e.target.value)}
-                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
-                    />
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-emerald-500 font-extrabold text-xs tracking-wider uppercase text-black rounded-xl hover:shadow-[0_4px_16px_rgba(16,185,129,0.25)] transition-all duration-300 mt-1 select-none"
-                >
-                  Ajouter Performance
-                </button>
-              </form>
+            <div className="flex flex-col gap-2">
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                onClick={() => setShowAddPerfModal(true)}
+                className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 font-extrabold text-xs tracking-wider uppercase text-black rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 select-none flex items-center justify-center gap-2"
+              >
+                <span>➕</span>
+                <span>Ajouter une performance</span>
+              </motion.button>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 px-1 select-none">
-                Performances Actuelles
-              </h3>
-              <div className="flex flex-col gap-2">
-                {performances.length === 0 && (
-                  <p className="text-xs text-gray-500 italic p-2">Aucune performance ajoutée.</p>
-                )}
-                {performances.map((perf, i) => (
-                  <div
-                    key={i}
-                    className="w-full flex items-center justify-between p-4 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors duration-300 select-none"
-                  >
-                    <div>
-                      <span className="font-extrabold text-sm text-emerald-400 mr-2">
-                        {perf.distance}
-                      </span>
-                      <span className="font-semibold text-sm text-white mr-1">{perf.temps}s</span>
-                      <span className="text-[10px] text-gray-500 block">
-                        {perf.competition} • {perf.date}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => handleRemovePerformance(perf.id, i)}
-                      className="text-gray-600 hover:text-red-400 text-xs font-semibold px-2"
-                    >
-                      Supprimer
-                    </button>
-                  </div>
-                ))}
+            <div className="flex flex-col gap-5">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 select-none">
+                  Mes Performances
+                </h3>
+                <span className="text-[10px] text-gray-500 font-bold bg-white/5 border border-white/5 rounded-full px-2.5 py-1">
+                  {performances.length} perf{performances.length > 1 ? "s" : ""}
+                </span>
               </div>
+
+              {performances.length === 0 ? (
+                <p className="text-xs text-gray-500 italic p-2">Aucune performance ajoutée.</p>
+              ) : (
+                Object.keys(
+                  performances.reduce((acc, perf) => {
+                    if (!acc[perf.distance]) {
+                      acc[perf.distance] = [];
+                    }
+                    acc[perf.distance].push(perf);
+                    return acc;
+                  }, {} as { [key: string]: Performance[] })
+                ).map((distance) => (
+                  <div key={distance} className="flex flex-col gap-2">
+                    <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-400 bg-white/5 border border-white/5 px-3 py-1.5 rounded-xl self-start">
+                      {distance}
+                    </h4>
+                    <div className="flex flex-col gap-2">
+                      {performances
+                        .filter((p) => p.distance === distance)
+                        .map((perf, i) => (
+                          <div
+                            key={perf.id || i}
+                            className="w-full flex items-center justify-between p-4 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors duration-300 select-none"
+                          >
+                            <div>
+                              <span className="font-extrabold text-sm text-emerald-400 mr-2">
+                                {perf.distance}
+                              </span>
+                              <span className="font-semibold text-sm text-white mr-1">{perf.temps}</span>
+                              <span className="text-[10px] text-gray-500 block">
+                                {perf.competition} • {perf.date}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => handleRemovePerformance(perf.id, i)}
+                              className="text-gray-600 hover:text-red-400 text-xs font-semibold px-2 transition-colors duration-300"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </motion.div>
         )}
@@ -1528,6 +1435,167 @@ export default function DashboardPage() {
                   Fermer
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Add Performance Modal */}
+        {showAddPerfModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-4 select-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="backdrop-blur-2xl bg-neutral-900/90 border border-white/10 rounded-3xl p-6 shadow-2xl max-w-lg w-full flex flex-col gap-5 border-t-emerald-400 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex flex-col select-none">
+                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                  Nouvelle performance
+                </span>
+                <h3 className="text-lg font-black text-white tracking-tight leading-snug">
+                  Ajouter une performance
+                </h3>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  handleAddPerformance(e);
+                  setShowAddPerfModal(false);
+                }}
+                className="flex flex-col gap-4"
+              >
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Catégorie de discipline
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 p-1 bg-neutral-950/50 border border-white/5 rounded-2xl">
+                    {Object.keys(ATHLETIC_DISCIPLINES).map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDisciplineCategory(cat);
+                          setNewDistance("");
+                        }}
+                        className={`flex-1 min-w-[90px] px-2.5 py-2 text-[9px] font-black tracking-wider uppercase rounded-xl transition-all duration-300 select-none ${
+                          selectedDisciplineCategory === cat
+                            ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
+                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                      Discipline
+                    </label>
+                    <select
+                      value={newDistance}
+                      onChange={(e) => {
+                        setNewDistance(e.target.value);
+                        if (e.target.value !== "Autre") {
+                          setCustomDiscipline("");
+                        }
+                      }}
+                      className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white"
+                      required
+                    >
+                      <option value="">-- Choisir --</option>
+                      {ATHLETIC_DISCIPLINES[selectedDisciplineCategory]?.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                      <option value="Autre">Autre (personnalisé)</option>
+                    </select>
+                    {newDistance === "Autre" && (
+                      <input
+                        type="text"
+                        placeholder="Ex: 1000m"
+                        value={customDiscipline}
+                        onChange={(e) => setCustomDiscipline(e.target.value)}
+                        className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600 mt-1"
+                        required
+                      />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                      Chrono / Perf
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="9.98"
+                      value={newTemps}
+                      onChange={(e) => setNewTemps(e.target.value)}
+                      className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={newDate}
+                      onChange={(e) => setNewDate(e.target.value)}
+                      className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white"
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                      Compétition
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Championnats"
+                      value={newComp}
+                      onChange={(e) => setNewComp(e.target.value)}
+                      className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                    />
+                  </div>
+                </div>
+
+                {["Sprint & Haies", "Sauts"].includes(selectedDisciplineCategory) && (
+                  <div className="flex flex-col gap-1 animate-fadeIn">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1 flex justify-between select-none">
+                      <span>Vent (m/s)</span>
+                      <span className="text-[9px] text-gray-600 font-normal lowercase tracking-normal">Optionnel</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: +1.2 ou -0.5"
+                      value={newWind}
+                      onChange={(e) => setNewWind(e.target.value)}
+                      className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                    />
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2 mt-2">
+                  <button
+                    type="submit"
+                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    🚀 Ajouter Performance
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPerfModal(false)}
+                    className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}
