@@ -11,20 +11,50 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showResend, setShowResend] = useState(false);
+  const [resendStatus, setResendStatus] = useState("");
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setShowResend(false);
+    setResendStatus("");
     
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     
     if (error) {
-      setError("Erreur d'authentification. Vérifiez vos identifiants.");
+      if (error.message.toLowerCase().includes("email not confirmed") || error.message.toLowerCase().includes("confirm your email")) {
+        setError("Votre adresse e-mail n'a pas encore été validée par code OTP.");
+        setShowResend(true);
+      } else {
+        setError("Erreur d'authentification. Vérifiez vos identifiants.");
+      }
       setLoading(false);
     } else {
       router.push("/dashboard");
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!email) {
+      setError("Veuillez saisir votre adresse e-mail pour renvoyer le code.");
+      return;
+    }
+    setResendStatus("Envoi en cours...");
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: email,
+      });
+      if (error) {
+        setResendStatus("Erreur : " + error.message);
+      } else {
+        setResendStatus("Un nouveau code a été envoyé avec succès !");
+      }
+    } catch (err) {
+      setResendStatus("Erreur lors de l'envoi.");
     }
   };
 
@@ -55,9 +85,23 @@ export default function LoginPage() {
             <motion.div
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-red-500/10 border border-red-500/30 text-red-400 p-3.5 rounded-xl text-xs font-semibold text-center select-none"
+              className="bg-red-500/10 border border-red-500/30 text-red-400 p-3.5 rounded-xl text-xs font-semibold text-center select-none flex flex-col gap-2"
             >
-              {error}
+              <span>{error}</span>
+              {showResend && (
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  className="text-emerald-400 hover:underline font-bold text-[10px] uppercase mt-1 cursor-pointer select-none"
+                >
+                  Renvoyer le code
+                </button>
+              )}
+              {resendStatus && (
+                <span className="text-[10px] text-emerald-300 font-bold block mt-1">
+                  {resendStatus}
+                </span>
+              )}
             </motion.div>
           )}
           

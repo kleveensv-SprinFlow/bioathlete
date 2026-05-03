@@ -9,16 +9,18 @@ import { supabase } from "@/lib/supabase";
 export default function RegisterPage() {
   const router = useRouter();
 
+  const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [otpToken, setOtpToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Modal states
   const [activeModal, setActiveModal] = useState<"cgu" | "privacy" | null>(null);
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegisterStep1 = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -38,6 +40,7 @@ export default function RegisterPage() {
       if (registerError) {
         setError(registerError.message);
       } else if (data.user) {
+        // Create profile on Step 1
         await supabase.from("profiles").insert([
           {
             user_id: data.user.id,
@@ -45,10 +48,44 @@ export default function RegisterPage() {
             is_premium: false,
           }
         ]);
-        router.push("/dashboard");
+        setStep(2);
+      } else {
+        setError("Une erreur inattendue est survenue.");
       }
     } catch (err) {
       setError("Erreur lors de l'inscription.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyStep2 = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (!otpToken || otpToken.length !== 6) {
+      setError("Veuillez entrer un code de vérification valide à 6 chiffres.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error: otpError } = await supabase.auth.verifyOtp({
+        email,
+        token: otpToken,
+        type: "signup",
+      });
+
+      if (otpError) {
+        setError(otpError.message === "Email not confirmed" ? "Code de vérification incorrect ou expiré." : otpError.message);
+      } else if (data.user || data.session) {
+        router.push("/dashboard");
+      } else {
+        setError("Échec de la validation. Veuillez réessayer.");
+      }
+    } catch (err) {
+      setError("Erreur lors de la confirmation.");
     } finally {
       setLoading(false);
     }
@@ -106,104 +143,170 @@ export default function RegisterPage() {
           </div>
         </motion.div>
 
-        {/* Form and CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="w-full backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col gap-6"
-        >
-          <div className="text-center">
-            <h3 className="text-xl font-black tracking-tight text-white select-none">
-              Inscrivez-vous maintenant
-            </h3>
-            <p className="text-gray-400 text-xs font-medium select-none mt-1">
-              Et accédez aux fonctionnalités Élite
-            </p>
-          </div>
-
-          <form onSubmit={handleRegister} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                Adresse e-mail
-              </label>
-              <input
-                type="email"
-                placeholder="athlete@bioathlete.space"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
-                required
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                Mot de passe
-              </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
-                required
-              />
-            </div>
-
-            {/* Consent Checkbox and buttons opening Modals */}
-            <div className="flex items-start gap-2.5 px-1 py-1">
-              <input
-                id="terms"
-                type="checkbox"
-                checked={acceptTerms}
-                onChange={(e) => setAcceptTerms(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded border border-white/20 bg-black checked:bg-emerald-500 focus:ring-0 transition-all cursor-pointer"
-              />
-              <label htmlFor="terms" className="text-[10px] text-gray-400 font-medium leading-relaxed select-none">
-                J&apos;accepte les{" "}
-                <button
-                  type="button"
-                  onClick={() => setActiveModal("cgu")}
-                  className="text-emerald-400 hover:underline font-bold transition-all cursor-pointer"
-                >
-                  CGU/CGV
-                </button>{" "}
-                et la{" "}
-                <button
-                  type="button"
-                  onClick={() => setActiveModal("privacy")}
-                  className="text-emerald-400 hover:underline font-bold transition-all cursor-pointer"
-                >
-                  Politique de Confidentialité
-                </button>.
-              </label>
-            </div>
-
-            {error && (
-              <p className="text-red-400 border border-red-500/30 bg-red-500/10 text-xs font-semibold px-3 py-2 rounded-xl animate-pulse select-none leading-relaxed">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 mt-1 select-none"
+        {/* Form and CTA depending on the Step */}
+        <AnimatePresence mode="wait">
+          {step === 1 ? (
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.4 }}
+              className="w-full backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col gap-6"
             >
-              {loading ? "Chargement..." : "Créer mon profil"}
-            </button>
-          </form>
+              <div className="text-center select-none">
+                <h3 className="text-xl font-black tracking-tight text-white">
+                  Étape 1: Inscrivez-vous
+                </h3>
+                <p className="text-gray-400 text-xs font-medium mt-1">
+                  Et accédez aux fonctionnalités Élite
+                </p>
+              </div>
 
-          <div className="text-center select-none pt-2 border-t border-white/5">
-            <p className="text-[11px] text-gray-400">
-              Vous avez déjà un compte ?{" "}
-              <Link href="/login" className="text-emerald-400 hover:underline font-bold transition-all">
-                Se connecter
-              </Link>
-            </p>
-          </div>
-        </motion.div>
+              <form onSubmit={handleRegisterStep1} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Adresse e-mail
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="athlete@bioathlete.space"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Mot de passe
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                    required
+                  />
+                </div>
+
+                {/* Consent Checkbox and buttons opening Modals */}
+                <div className="flex items-start gap-2.5 px-1 py-1">
+                  <input
+                    id="terms"
+                    type="checkbox"
+                    checked={acceptTerms}
+                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded border border-white/20 bg-black checked:bg-emerald-500 focus:ring-0 transition-all cursor-pointer"
+                  />
+                  <label htmlFor="terms" className="text-[10px] text-gray-400 font-medium leading-relaxed select-none">
+                    J&apos;accepte les{" "}
+                    <button
+                      type="button"
+                      onClick={() => setActiveModal("cgu")}
+                      className="text-emerald-400 hover:underline font-bold transition-all cursor-pointer"
+                    >
+                      CGU/CGV
+                    </button>{" "}
+                    et la{" "}
+                    <button
+                      type="button"
+                      onClick={() => setActiveModal("privacy")}
+                      className="text-emerald-400 hover:underline font-bold transition-all cursor-pointer"
+                    >
+                      Politique de Confidentialité
+                </button>.
+                  </label>
+                </div>
+
+                {error && (
+                  <p className="text-red-400 border border-red-500/30 bg-red-500/10 text-xs font-semibold px-3 py-2 rounded-xl animate-pulse select-none leading-relaxed">
+                    {error}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 mt-1 select-none"
+                >
+                  {loading ? "Chargement..." : "S'inscrire"}
+                </button>
+              </form>
+
+              <div className="text-center select-none pt-2 border-t border-white/5">
+                <p className="text-[11px] text-gray-400">
+                  Vous avez déjà un compte ?{" "}
+                  <Link href="/login" className="text-emerald-400 hover:underline font-bold transition-all">
+                    Se connecter
+                  </Link>
+                </p>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.4 }}
+              className="w-full backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col gap-6 select-none"
+            >
+              <div className="text-center select-none">
+                <h3 className="text-xl font-black tracking-tight text-white select-none">
+                  Étape 2: Confirmation OTP
+                </h3>
+                <p className="text-gray-400 text-xs font-medium select-none mt-1 leading-relaxed">
+                  Un code à 6 chiffres a été envoyé à :<br />
+                  <span className="text-emerald-400 font-bold select-text">{email}</span>
+                </p>
+              </div>
+
+              <form onSubmit={handleVerifyStep2} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Code à 6 chiffres
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="123456"
+                    value={otpToken}
+                    onChange={(e) => setOtpToken(e.target.value)}
+                    className="w-full p-4 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-base text-center tracking-[0.4em] font-black text-emerald-400 placeholder-gray-700"
+                    required
+                  />
+                </div>
+
+                {error && (
+                  <p className="text-red-400 border border-red-500/30 bg-red-500/10 text-xs font-semibold px-3 py-2 rounded-xl animate-pulse select-none leading-relaxed">
+                    {error}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 mt-1 select-none"
+                >
+                  {loading ? "Vérification..." : "Valider mon compte"}
+                </button>
+              </form>
+
+              <div className="text-center select-none pt-2 border-t border-white/5">
+                <button
+                  onClick={() => setStep(1)}
+                  type="button"
+                  className="text-[11px] text-gray-400 hover:text-emerald-400 underline font-bold"
+                >
+                  Retour à l&apos;étape précédente
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
       </div>
 
