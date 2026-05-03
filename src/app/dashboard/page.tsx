@@ -621,7 +621,7 @@ export default function DashboardPage() {
         <div className="w-full flex items-center justify-between gap-3 select-none">
           <Link
             href={`/u/${username || usernameInput || "athlete"}`}
-            target="_blank"
+            target="_self"
             className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider text-center rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 shadow-lg select-none"
           >
             Voir ma page <span>↗</span>
