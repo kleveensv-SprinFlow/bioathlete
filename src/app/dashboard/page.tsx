@@ -60,6 +60,7 @@ export default function DashboardPage() {
   const [username, setUsername] = useState("");
   const [usernameInput, setUsernameInput] = useState("");
   const [profSuccess, setProfSuccess] = useState("");
+  const [isPremium, setIsPremium] = useState(false);
 
   const [performances, setPerformances] = useState<Performance[]>([]);
   const [links, setLinks] = useState<SocialLink[]>([]);
@@ -84,6 +85,7 @@ export default function DashboardPage() {
   const [newVideoTitle, setNewVideoTitle] = useState("");
 
   const [shareText, setShareText] = useState("");
+  const [linkError, setLinkError] = useState("");
 
   // Load user data and content
   useEffect(() => {
@@ -101,13 +103,14 @@ export default function DashboardPage() {
         // Fetch user profile username
         const { data: profData, error: profErr } = await supabase
           .from("profiles")
-          .select("username")
+          .select("username, is_premium")
           .eq("user_id", uid)
           .maybeSingle();
 
-        if (!profErr && profData?.username) {
-          setUsername(profData.username);
-          setUsernameInput(profData.username);
+        if (!profErr && profData) {
+          setUsername(profData.username || "");
+          setUsernameInput(profData.username || "");
+          setIsPremium(profData.is_premium || false);
         }
 
         // Fetch filtered data
@@ -167,6 +170,23 @@ export default function DashboardPage() {
     }
   };
 
+  const handleUpgradePremium = async () => {
+    if (!userId) return;
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .upsert([{ user_id: userId, username: username || "athlete", is_premium: true }])
+        .select();
+
+      if (!error && data && data.length > 0) {
+        setIsPremium(true);
+        setProfSuccess("Mode Élite débloqué avec succès ! 🔥");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleAddPerformance = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDate || !newTemps || !userId) return;
@@ -198,6 +218,13 @@ export default function DashboardPage() {
   const handleAddLink = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLinkTitle || !newLinkUrl || !userId) return;
+    setLinkError("");
+
+    // Freemium restriction check: 3 links limit for standard users
+    if (!isPremium && links.length >= 3) {
+      setLinkError("Passe en mode Élite pour débloquer plus de 3 liens !");
+      return;
+    }
 
     const newItem: Omit<SocialLink, "id"> = {
       title: newLinkTitle,
@@ -397,6 +424,38 @@ export default function DashboardPage() {
             Déconnexion
           </button>
         </div>
+
+        {/* Freemium Banner & Option Élite */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl flex flex-col gap-4 select-none"
+        >
+          <div className="flex items-center justify-between select-none">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                Statut de votre compte
+              </h3>
+              <p className="text-gray-300 text-sm font-black uppercase tracking-wide mt-1">
+                {isPremium ? "🏆 Mode Élite Actif" : "🆓 Compte Standard (Gratuit)"}
+              </p>
+            </div>
+            {!isPremium && (
+              <button
+                onClick={handleUpgradePremium}
+                className="px-4 py-2 bg-emerald-500 text-black font-extrabold text-xs tracking-wider uppercase rounded-xl hover:bg-emerald-400 shadow-lg transition-all"
+              >
+                Devenir Élite
+              </button>
+            )}
+          </div>
+          {!isPremium && (
+            <p className="text-[10px] text-gray-400 font-medium">
+              Le mode Standard est limité à 3 liens maximum. Passez au mode Élite pour débloquer toutes les fonctionnalités.
+            </p>
+          )}
+        </motion.div>
 
         {/* Partager mon profil URL button */}
         {username && (
@@ -788,6 +847,12 @@ export default function DashboardPage() {
                 required
               />
             </div>
+
+            {linkError && (
+              <p className="text-red-400 text-xs font-semibold px-1 py-1 animate-pulse select-none">
+                {linkError}
+              </p>
+            )}
 
             <button
               type="submit"
