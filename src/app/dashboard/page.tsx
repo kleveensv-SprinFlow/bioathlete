@@ -65,6 +65,8 @@ export default function DashboardPage() {
   const [username, setUsername] = useState("");
   const [usernameInput, setUsernameInput] = useState("");
   const [fullNameInput, setFullNameInput] = useState("");
+  const [firstNameInput, setFirstNameInput] = useState("");
+  const [lastNameInput, setLastNameInput] = useState("");
   const [profSuccess, setProfSuccess] = useState("");
   const [isPremium, setIsPremium] = useState(false);
   const [showStripeModal, setShowStripeModal] = useState(false);
@@ -129,6 +131,9 @@ export default function DashboardPage() {
           setUsername(profData.username || "");
           setUsernameInput(profData.username || "");
           setFullNameInput(profData.full_name || "");
+          const [first, ...rest] = (profData.full_name || "").split(" ");
+          setFirstNameInput(first || "");
+          setLastNameInput(rest.join(" ") || "");
           setIsPremium(profData.is_premium || false);
           setBioInput(profData.bio || "");
           setAvatarUrl(profData.avatar_url || "");
@@ -209,13 +214,15 @@ export default function DashboardPage() {
     if (!usernameInput || !userId) return;
     setProfSuccess("");
 
+    const newFullName = `${firstNameInput.trim()} ${lastNameInput.trim()}`.trim() || fullNameInput;
+
     try {
       const { data, error } = await supabase
         .from("profiles")
         .upsert([{
           user_id: userId,
           username: usernameInput.toLowerCase(),
-          full_name: fullNameInput,
+          full_name: newFullName,
           bio: bioInput,
           avatar_url: avatarUrl
         }])
@@ -225,6 +232,9 @@ export default function DashboardPage() {
         setUsername(data[0].username);
         setUsernameInput(data[0].username);
         setFullNameInput(data[0].full_name || "");
+        const [first, ...rest] = (data[0].full_name || "").split(" ");
+        setFirstNameInput(first || "");
+        setLastNameInput(rest.join(" ") || "");
         setProfSuccess("Informations de profil enregistrées avec succès !");
         setTimeout(() => setProfSuccess(""), 3000);
       }
@@ -727,9 +737,36 @@ export default function DashboardPage() {
                 Informations Publiques
               </h3>
               <form onSubmit={handleSaveProfileInfo} className="flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                      Prénom
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Usain"
+                      value={firstNameInput}
+                      onChange={(e) => setFirstNameInput(e.target.value)}
+                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                      Nom
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Bolt"
+                      value={lastNameInput}
+                      onChange={(e) => setLastNameInput(e.target.value)}
+                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                    />
+                  </div>
+                </div>
+
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Nom d&apos;utilisateur (URL)
+                    Identifiant unique (URL)
                   </label>
                   <input
                     type="text"

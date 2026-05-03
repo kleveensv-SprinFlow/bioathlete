@@ -93,7 +93,7 @@ export default function PublicAthleteProfile() {
         // Fetch profile
         const { data: profile, error: profErr } = await supabase
           .from("profiles")
-          .select("user_id, bio, avatar_url, photos")
+          .select("user_id, bio, avatar_url, photos, full_name")
           .eq("username", username.toLowerCase())
           .maybeSingle() as any;
 
