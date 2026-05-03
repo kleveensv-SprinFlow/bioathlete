@@ -711,7 +711,7 @@ export default function DashboardPage() {
           </div>
           <div className="relative">
             <button
-              onClick={() => setShowUserMenu(!showUserMenu)}
+              onClick={() => setShowProfileModal(true)}
               className="w-12 h-12 rounded-full border-2 border-emerald-500 overflow-hidden bg-neutral-900 flex items-center justify-center hover:scale-105 hover:shadow-[0_0_12px_rgba(16,185,129,0.4)] transition-all duration-300 select-none cursor-pointer"
             >
               {avatarUrl ? (
@@ -722,68 +722,6 @@ export default function DashboardPage() {
                 </span>
               )}
             </button>
-
-            {/* Dropdown Menu Popup */}
-            {showUserMenu && (
-              <div className="absolute right-0 top-14 w-48 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 shadow-2xl z-50 flex flex-col gap-1 select-none animate-fadeIn">
-                {!isPremium && (
-                  <button
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      setShowStripeModal(true);
-                    }}
-                    className="relative overflow-hidden w-full text-left text-[11px] font-black tracking-wider uppercase text-black bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-400 px-3 py-2.5 rounded-xl hover:brightness-110 transition-all flex items-center gap-2 mb-1 group"
-                  >
-                    <span>🏆</span>
-                    <span>Devenir Élite</span>
-                    <span className="absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-25deg] group-hover:left-[120%] left-[-60%] transition-all duration-700 ease-in-out pointer-events-none"></span>
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    setShowProfileModal(true);
-                  }}
-                  className="w-full text-left text-[11px] font-bold text-gray-300 hover:bg-white/5 hover:text-white px-3 py-2.5 rounded-xl transition-all flex items-center gap-2"
-                >
-                  <span>✏️</span>
-                  <span>Modifier mon profil</span>
-                </button>
-                <label className="w-full text-[11px] font-bold text-emerald-400 hover:bg-white/5 px-3 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2">
-                  <span>📸</span>
-                  <span>Changer la photo</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      handleAvatarUpload(e);
-                      setShowUserMenu(false);
-                    }}
-                    className="hidden"
-                  />
-                </label>
-                <button
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    handleLogout();
-                  }}
-                  className="w-full text-left text-[11px] font-bold text-gray-300 hover:bg-white/5 hover:text-white px-3 py-2.5 rounded-xl transition-all flex items-center gap-2"
-                >
-                  <span>🚪</span>
-                  <span>Se déconnecter</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    handleDeleteAccount();
-                  }}
-                  className="w-full text-left text-[11px] font-bold text-red-400 hover:bg-red-500/10 px-3 py-2.5 rounded-xl transition-all flex items-center gap-2"
-                >
-                  <span>⚠️</span>
-                  <span>Supprimer le compte</span>
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
@@ -1751,6 +1689,28 @@ export default function DashboardPage() {
                   >
                     💾 Enregistrer les modifications
                   </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProfileModal(false);
+                        handleLogout();
+                      }}
+                      className="py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5"
+                    >
+                      🚪 Déconnexion
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProfileModal(false);
+                        handleDeleteAccount();
+                      }}
+                      className="py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5"
+                    >
+                      ⚠️ Supprimer
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setShowProfileModal(false)}
