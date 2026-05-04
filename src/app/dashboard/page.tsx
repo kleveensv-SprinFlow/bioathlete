@@ -52,7 +52,7 @@ const staggerContainer = {
 
 const staggerItem = {
   hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
 };
 
 const PREDEFINED_EQUIPEMENTIERS = [
@@ -124,7 +124,7 @@ function LivePreviewModal({
         initial={{ scale: 0.85, opacity: 0, y: 40 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.85, opacity: 0, y: 40 }}
-        transition={{ type: "spring", stiffness: 200, damping: 25 }}
+        transition={{ type: "spring" as const, stiffness: 200, damping: 25 }}
         className="relative max-w-md w-full px-5 py-8 flex flex-col items-center gap-6 min-h-screen"
         onClick={(e) => e.stopPropagation()}
       >

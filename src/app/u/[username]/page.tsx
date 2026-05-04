@@ -45,6 +45,66 @@ interface EvolutionPoint {
   "100m": number;
 }
 
+
+export interface PerformanceRaw {
+  id?: string | number;
+  distance: string;
+  temps: string | number;
+  date: string;
+  competition?: string;
+  [key: string]: any;
+}
+
+export interface ProcessedDiscipline {
+  distance: string;
+  records: PerformanceRaw[];
+  firstRecord: PerformanceRaw;
+  bestRecord: PerformanceRaw;
+  improvementTime: string;
+  improvementPercentage: string;
+}
+
+export function processPerformances(performances: PerformanceRaw[]): { [key: string]: ProcessedDiscipline } {
+  const grouped: { [key: string]: PerformanceRaw[] } = {};
+
+  performances.forEach(perf => {
+    if (!grouped[perf.distance]) {
+      grouped[perf.distance] = [];
+    }
+    grouped[perf.distance].push(perf);
+  });
+
+  const result: { [key: string]: ProcessedDiscipline } = {};
+
+  for (const [distance, records] of Object.entries(grouped)) {
+    const sortedByDate = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sortedByTime = [...records].sort((a, b) => parseFloat(a.temps.toString()) - parseFloat(b.temps.toString()));
+
+    const firstRecord = sortedByDate[0];
+    const bestRecord = sortedByTime[0];
+
+    const firstTime = parseFloat(firstRecord.temps.toString());
+    const bestTime = parseFloat(bestRecord.temps.toString());
+
+    let improvementTimeVal = bestTime - firstTime;
+    let improvementPercentageVal = firstTime > 0 ? (improvementTimeVal / firstTime) * 100 : 0;
+
+    let improvementTime = improvementTimeVal <= 0 ? `${improvementTimeVal.toFixed(2)}s` : `+${improvementTimeVal.toFixed(2)}s`;
+    let improvementPercentage = improvementTimeVal <= 0 ? `${improvementPercentageVal.toFixed(1)}%` : `+${improvementPercentageVal.toFixed(1)}%`;
+
+    result[distance] = {
+      distance,
+      records: sortedByDate,
+      firstRecord,
+      bestRecord,
+      improvementTime,
+      improvementPercentage
+    };
+  }
+
+  return result;
+}
+
 const staggerContainer = {
   hidden: { opacity: 0 },
   show: {
@@ -58,7 +118,7 @@ const staggerContainer = {
 
 const staggerItem = {
   hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 20 } }
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 100, damping: 20 } }
 };
 
 export default function PublicAthleteProfile() {
@@ -80,11 +140,15 @@ export default function PublicAthleteProfile() {
   const headerY = useTransform(scrollY, [0, 400], [0, 100]);
 
   useEffect(() => {
+
     async function fetchAthleteByUsername() {
       if (!username) {
         setLoading(false);
         return;
       }
+
+
+
 
       try {
         await supabase.from("views").insert([{ count: 1 }]);
@@ -137,7 +201,7 @@ export default function PublicAthleteProfile() {
           const mappedRecords = perfData.slice(-2).map((p) => ({
             distance: p.distance,
             temps: p.temps + "s",
-            competition: p.competition || "Meeting",
+            competition: p.competition,
           }));
           setRecords(mappedRecords);
 
@@ -228,62 +292,123 @@ export default function PublicAthleteProfile() {
   const partenaires = sponsors.filter((sp) => sp.category === "Partenaire" || !sp.category);
   const galleryPhotos = profileData.photos && profileData.photos.length > 0 ? profileData.photos : [];
 
+
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500 selection:text-black">
       <div className="fixed top-[-15%] left-[-15%] w-[600px] h-[600px] bg-emerald-500/15 rounded-full blur-[140px] pointer-events-none z-0"></div>
       <div className="fixed bottom-[-15%] right-[-15%] w-[600px] h-[600px] bg-blue-500/15 rounded-full blur-[140px] pointer-events-none z-0"></div>
 
-      <motion.div
-        variants={staggerContainer}
-        initial="hidden"
-        animate="show"
-        className="relative z-10 max-w-md mx-auto px-5 pt-8 pb-24 flex flex-col items-center gap-4 min-h-screen select-none"
-      >
+      <div className="relative z-10 flex flex-col md:flex-row min-h-screen w-full max-w-[1400px] mx-auto">
+        {/* COLONNE DE GAUCHE */}
+        <motion.div
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="w-full md:w-1/3 md:sticky md:top-0 md:h-screen flex flex-col justify-between p-8 md:p-12 border-b md:border-b-0 md:border-r border-white/5 bg-black/40 backdrop-blur-md z-20"
+        >
+          {/* Haut : Logo */}
+          <div className="w-full flex justify-center md:justify-start select-none">
+            <img
+              src="/logo.png"
+              alt="BioAthlete Logo"
+              className="h-16 md:h-20 object-contain brightness-0 invert"
+            />
+          </div>
 
-        {/* Centered BioAthlete Logo */}
-        <motion.div variants={staggerItem} className="w-full flex justify-center select-none mb-2 -mt-4">
-          <img 
-            src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png" 
-            alt="BioAthlete Logo" 
-            className="h-40 object-contain brightness-0 invert"
-          />
+          {/* Centre : Navigation */}
+          <nav className="flex flex-col gap-6 my-10 md:my-0 select-none items-center md:items-start">
+            <a href="#performances" className="text-gray-400 hover:text-white font-black text-sm uppercase tracking-widest transition-colors flex items-center gap-3 group">
+              <span className="hidden md:block w-8 h-[1px] bg-gray-600 group-hover:bg-[#00FF88] group-hover:w-12 transition-all duration-300"></span>
+              Performances
+            </a>
+            <a href="#sponsors" className="text-gray-400 hover:text-white font-black text-sm uppercase tracking-widest transition-colors flex items-center gap-3 group">
+              <span className="hidden md:block w-8 h-[1px] bg-gray-600 group-hover:bg-[#00FF88] group-hover:w-12 transition-all duration-300"></span>
+              Sponsors
+            </a>
+            <a href="#medias" className="text-gray-400 hover:text-white font-black text-sm uppercase tracking-widest transition-colors flex items-center gap-3 group">
+              <span className="hidden md:block w-8 h-[1px] bg-gray-600 group-hover:bg-[#00FF88] group-hover:w-12 transition-all duration-300"></span>
+              Médias
+            </a>
+          </nav>
+
+          {/* Bas : Réseaux & Sources */}
+          <div className="flex items-center justify-center md:justify-start gap-4 flex-wrap select-none">
+            {links.length > 0 ? (
+              links.map((link, idx) => (
+                <a
+                  key={idx}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-lg hover:bg-white/10 hover:border-emerald-500/30 hover:text-emerald-400 transition-all duration-300 shadow-lg"
+                  title={link.title}
+                >
+                  {link.icon || "🔗"}
+                </a>
+              ))
+            ) : (
+              <span className="text-xs text-gray-600 uppercase tracking-wider">Aucun réseau</span>
+            )}
+          </div>
         </motion.div>
 
-        <motion.div variants={staggerItem} style={{ y: headerY }} className="flex flex-col items-center gap-4 text-center select-none w-full -mt-14">
-          <div
-            className="w-24 h-24 rounded-full bg-gradient-to-tr from-[#00FF88] to-emerald-400 p-1 shadow-[0_0_25px_rgba(0,255,136,0.4)] flex items-center justify-center relative select-none overflow-hidden"
-          >
+        {/* COLONNE DE DROITE */}
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="show"
+          className="w-full md:w-2/3 flex flex-col gap-12 pb-24 select-none"
+        >
+
+
+
+
+
+        {/* HERO SECTION */}
+        <motion.div
+          variants={staggerItem}
+          className="relative w-full h-[500px] md:h-[600px] overflow-hidden rounded-b-3xl md:rounded-3xl shadow-2xl group"
+        >
+          <motion.div style={{ y: headerY }} className="absolute inset-0 w-full h-[120%] -top-[10%]">
             {profileData.avatar_url ? (
               <img
                 src={profileData.avatar_url}
                 alt={username}
-                className="w-full h-full object-cover rounded-full select-none"
+                className="w-full h-full object-cover object-top select-none"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                   e.currentTarget.nextElementSibling?.classList.remove('hidden');
                 }}
               />
             ) : null}
-            <div className={`w-full h-full rounded-full bg-black flex items-center justify-center font-black text-3xl tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-[#00FF88] to-blue-400 select-none ${profileData.avatar_url ? 'hidden' : ''}`}>
-              {username?.slice(0, 2).toUpperCase() || "BA"}
+            <div className={`w-full h-full bg-gradient-to-b from-black via-[#111111] to-[#000000] flex flex-col items-center justify-center relative select-none ${profileData.avatar_url ? 'hidden' : ''}`}>
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#00FF88]/20 via-black to-black opacity-60"></div>
+              <div className="font-black text-8xl md:text-[120px] tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-[#00FF88]/50 select-none z-10 drop-shadow-[0_0_30px_rgba(0,255,136,0.3)]">
+                {username?.slice(0, 2).toUpperCase() || "BA"}
+              </div>
             </div>
-            <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-400 border-2 border-black rounded-full animate-pulse z-10"></span>
-          </div>
-          
-          <div className="flex flex-col gap-1 select-none">
-            <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-md uppercase">
-              {(profileData.full_name || username).toUpperCase()}
-            </h1>
-            <p className="text-[#00FF88] text-sm font-extrabold uppercase tracking-widest select-none drop-shadow-[0_0_8px_rgba(0,255,136,0.5)]">
-              Athlète
+            {/* Gradient Overlay for Text Readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
+          </motion.div>
+
+          {/* Glassmorphism Info Overlay */}
+          <div className="absolute bottom-0 left-0 w-full p-6 md:p-10 flex flex-col gap-2">
+            <div className="flex flex-col gap-1 select-none">
+              <h1 className="text-4xl md:text-6xl font-black tracking-tight text-white drop-shadow-md uppercase">
+                {(profileData.full_name || username).toUpperCase()}
+              </h1>
+              <p className="text-[#00FF88] text-sm md:text-base font-extrabold uppercase tracking-widest select-none drop-shadow-[0_0_8px_rgba(0,255,136,0.5)]">
+                Athlète
+              </p>
+            </div>
+            <p className="text-gray-300 text-sm md:text-base max-w-2xl leading-relaxed select-none backdrop-blur-md bg-black/20 p-4 rounded-xl border border-white/10 mt-2">
+              {profileData.bio || "Athlète passionné visant l'excellence sur les pistes nationales et internationales."}
             </p>
           </div>
-
-          <p className="text-gray-300 text-sm max-w-sm mt-1 px-4 leading-relaxed select-none">
-            {profileData.bio || "Athlète passionné visant l'excellence sur les pistes nationales et internationales."}
-          </p>
         </motion.div>
 
+
+        <div id="sponsors" className="w-full"></div>
         {equipementiers.length > 0 && (
           <motion.div variants={staggerItem} className="w-full select-none text-center flex flex-col items-center">
             <h3 className="text-xs font-black uppercase tracking-wider text-[#00FF88] mb-2 select-none">
@@ -330,6 +455,7 @@ export default function PublicAthleteProfile() {
           </motion.div>
         )}
 
+        <div id="medias" className="w-full"></div>
         {galleryPhotos.length > 0 && (
           <motion.div variants={staggerItem} className="w-full select-none">
             <div className="w-full flex items-center gap-4 overflow-x-auto pb-4 pt-2 snap-x select-none scrollbar-none">
@@ -400,6 +526,7 @@ export default function PublicAthleteProfile() {
           </motion.div>
         )}
 
+        <div id="performances" className="w-full"></div>
         {records.length > 0 && (
           <motion.div variants={staggerItem} className="grid grid-cols-2 gap-4 w-full select-none">
             {records.map((rec, i) => (
@@ -415,9 +542,11 @@ export default function PublicAthleteProfile() {
                 <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 tracking-tight drop-shadow-[0_0_12px_rgba(0,255,136,0.5)]">
                   {rec.temps}
                 </div>
-                <div className="text-gray-500 text-[10px] select-none truncate">
-                  {rec.competition}
-                </div>
+                {rec.competition && (
+                  <div className="text-gray-500 text-[10px] select-none truncate">
+                    {rec.competition}
+                  </div>
+                )}
               </motion.div>
             ))}
           </motion.div>
@@ -516,6 +645,7 @@ export default function PublicAthleteProfile() {
           </footer>
         </motion.div>
       </motion.div>
+      </div>
     </div>
   );
 }
