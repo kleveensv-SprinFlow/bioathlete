@@ -135,6 +135,8 @@ export default function PublicAthleteProfile() {
   const [evolution, setEvolution] = useState<EvolutionPoint[]>([]);
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [processedPerformances, setProcessedPerformances] = useState<{ [key: string]: ProcessedDiscipline }>({});
+  const [selectedDiscipline, setSelectedDiscipline] = useState<string | null>(null);
 
   const { scrollY } = useScroll();
   const headerY = useTransform(scrollY, [0, 400], [0, 100]);
@@ -191,7 +193,7 @@ export default function PublicAthleteProfile() {
           } catch (e) {}
         }
 
-        // Fetch records
+                // Fetch records
         const { data: perfData, error: perfErr } = await supabase
           .from("performances")
           .select("*")
@@ -210,6 +212,13 @@ export default function PublicAthleteProfile() {
             "100m": parseFloat(p.temps),
           }));
           setEvolution(mappedEvolution);
+
+          const processed = processPerformances(perfData);
+          setProcessedPerformances(processed);
+          const disciplines = Object.keys(processed);
+          if (disciplines.length > 0) {
+            setSelectedDiscipline(disciplines[0]);
+          }
         }
 
         // Fetch links
@@ -304,7 +313,7 @@ export default function PublicAthleteProfile() {
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="w-full md:w-1/3 md:sticky md:top-0 md:h-screen flex flex-col justify-between p-8 md:p-12 border-b md:border-b-0 md:border-r border-white/5 bg-black/40 backdrop-blur-md z-20"
+          className="hidden md:flex w-full md:w-1/3 md:sticky md:top-0 md:h-screen flex-col justify-between p-8 md:p-12 border-b md:border-b-0 md:border-r border-white/5 bg-black/40 backdrop-blur-md z-20"
         >
           {/* Haut : Logo */}
           <div className="w-full flex justify-center md:justify-start select-none">
@@ -363,6 +372,15 @@ export default function PublicAthleteProfile() {
 
 
 
+
+        {/* MOBILE TOP LEFT LOGO */}
+        <div className="md:hidden absolute top-6 left-6 z-50 pointer-events-none">
+          <img
+            src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png"
+            alt="BioAthlete Logo"
+            className="h-8 object-contain brightness-0 invert drop-shadow-md"
+          />
+        </div>
 
         {/* HERO SECTION */}
         <motion.div
@@ -527,82 +545,111 @@ export default function PublicAthleteProfile() {
         )}
 
         <div id="performances" className="w-full"></div>
-        {records.length > 0 && (
-          <motion.div variants={staggerItem} className="grid grid-cols-2 gap-4 w-full select-none">
-            {records.map((rec, i) => (
-              <motion.div
-                key={i}
-                whileHover={{ scale: 1.05, y: -4 }}
-                whileTap={{ scale: 0.98 }}
-                className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col justify-between gap-1 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] hover:border-[#00FF88]/40 hover:shadow-[0_0_20px_rgba(0,255,136,0.3)] transition-all duration-300 select-none"
-              >
-                <div className="text-gray-400 font-extrabold text-xs tracking-wider uppercase">
-                  {rec.distance}
+        {Object.keys(processedPerformances).length > 0 && selectedDiscipline && processedPerformances[selectedDiscipline] && (
+          <motion.div variants={staggerItem} className="w-full flex flex-col gap-6 select-none">
+            {/* TABS FOR DISCIPLINES */}
+            <div className="w-full overflow-x-auto pb-2 scrollbar-none snap-x">
+              <div className="flex gap-2">
+                {Object.keys(processedPerformances).map((disc) => (
+                  <button
+                    key={disc}
+                    onClick={() => setSelectedDiscipline(disc)}
+                    className={`snap-center px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all duration-300 ${
+                      selectedDiscipline === disc
+                        ? "bg-[#00FF88]/10 text-[#00FF88] border border-[#00FF88]/30 shadow-[0_0_15px_rgba(0,255,136,0.15)]"
+                        : "bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10"
+                    }`}
+                  >
+                    {disc}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* PB CARD */}
+            <motion.div
+              key={selectedDiscipline}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00FF88] to-transparent opacity-50"></div>
+
+              <div className="text-[#00FF88] font-black text-xs tracking-widest uppercase mb-2">Record Personnel</div>
+
+              <div className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 tracking-tighter drop-shadow-md">
+                {processedPerformances[selectedDiscipline].bestRecord.temps}
+                <span className="text-2xl md:text-3xl text-gray-500">s</span>
+              </div>
+
+              <div className="mt-4 flex flex-col items-center gap-1 text-center">
+                <div className="flex items-center gap-2 bg-[#00FF88]/10 border border-[#00FF88]/20 px-3 py-1 rounded-full">
+                  <span className="w-2 h-2 rounded-full bg-[#00FF88] animate-pulse"></span>
+                  <span className="text-[#00FF88] text-[10px] font-bold tracking-widest">
+                    {processedPerformances[selectedDiscipline].improvementPercentage} D'ÉVOLUTION
+                  </span>
                 </div>
-                <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 tracking-tight drop-shadow-[0_0_12px_rgba(0,255,136,0.5)]">
-                  {rec.temps}
-                </div>
-                {rec.competition && (
-                  <div className="text-gray-500 text-[10px] select-none truncate">
-                    {rec.competition}
+
+                {processedPerformances[selectedDiscipline].bestRecord.competition && (
+                  <div className="text-gray-400 text-xs font-medium uppercase tracking-wider mt-2">
+                    {processedPerformances[selectedDiscipline].bestRecord.competition}
                   </div>
                 )}
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
+                <div className="text-gray-500 text-[10px] mt-1">
+                  {new Date(processedPerformances[selectedDiscipline].bestRecord.date).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' })}
+                </div>
+              </div>
+            </motion.div>
 
-        {evolution.length > 0 && (
-          <motion.div variants={staggerItem} className="w-full h-[320px] backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-5 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] hover:border-emerald-500/30 transition-all duration-300 select-none">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#00FF88] mb-4 select-none">
-              Progression Chronométrique (100m)
-            </h3>
-            <div className="w-full h-[230px] select-none">
+            {/* CHART */}
+            <motion.div
+              key={`chart-${selectedDiscipline}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1, duration: 0.5 }}
+              className="w-full h-[200px] mt-2 relative"
+            >
               {mounted && (
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={evolution}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fill: '#888888', fontSize: 10 }} 
-                      axisLine={{ stroke: '#2c2c2c' }} 
-                      tickLine={{ stroke: '#2c2c2c' }}
-                    />
-                    <YAxis 
-                      domain={['dataMin - 0.1', 'dataMax + 0.1']} 
-                      tick={{ fill: '#888888', fontSize: 10 }} 
-                      axisLine={{ stroke: '#2c2c2c' }} 
-                      tickLine={{ stroke: '#2c2c2c' }}
-                      reversed
-                    />
+                  <AreaChart
+                    data={processedPerformances[selectedDiscipline].records.map(r => ({
+                      ...r,
+                      tempsVal: parseFloat(r.temps.toString())
+                    }))}
+                  >
                     <Tooltip 
-                      contentStyle={{ background: '#000000', border: '1px solid #333333', borderRadius: '12px' }} 
-                      labelStyle={{ color: '#888888', fontSize: 11 }} 
-                      itemStyle={{ color: '#10b981', fontSize: 12 }} 
+                      contentStyle={{ background: '#0a0a0a', border: '1px solid #1f1f1f', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
+                      labelStyle={{ color: '#888888', fontSize: 10, textTransform: 'uppercase', marginBottom: '4px' }}
+                      itemStyle={{ color: '#00FF88', fontSize: 14, fontWeight: '900' }}
+                      formatter={(value) => [`${value}s`, 'Chrono']}
+                      labelFormatter={(label) => new Date(label).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}
                     />
                     <Area
                       type="monotone"
-                      dataKey="100m"
-                      stroke="url(#gradient-line)"
+                      dataKey="tempsVal"
+                      stroke="#00FF88"
                       strokeWidth={3}
                       fillOpacity={1}
-                      fill="url(#gradient-area)"
-                      activeDot={{ r: 8, fill: '#10b981', stroke: '#000000', strokeWidth: 2 }}
+                      fill="url(#glow-gradient)"
+                      activeDot={{ r: 6, fill: '#00FF88', stroke: '#000000', strokeWidth: 3 }}
+                      dot={processedPerformances[selectedDiscipline].records.length === 1 ? { r: 6, fill: '#00FF88', stroke: '#000000', strokeWidth: 3 } : false}
+                      isAnimationActive={true}
                     />
                     <defs>
-                      <linearGradient id="gradient-line" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#10b981" />
-                        <stop offset="100%" stopColor="#3b82f6" />
+                      <linearGradient id="glow-gradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#00FF88" stopOpacity={0.2} />
+                        <stop offset="100%" stopColor="#00FF88" stopOpacity={0.0} />
                       </linearGradient>
-                      <linearGradient id="gradient-area" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
-                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.0} />
-                      </linearGradient>
+                      <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="4" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                      </filter>
                     </defs>
                   </AreaChart>
                 </ResponsiveContainer>
               )}
-            </div>
+            </motion.div>
           </motion.div>
         )}
 
@@ -644,6 +691,39 @@ export default function PublicAthleteProfile() {
             </p>
           </footer>
         </motion.div>
+
+        {/* MOBILE NAVIGATION BAR (Bottom Sticky) */}
+        <div className="md:hidden fixed bottom-0 left-0 w-full z-50 p-4 select-none pb-safe">
+          <div className="w-full backdrop-blur-2xl bg-black/60 border border-white/10 rounded-2xl flex items-center justify-around p-3 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
+            <a href="#performances" className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#00FF88] transition-colors">
+              <span className="text-xl">⏱️</span>
+              <span className="text-[9px] font-black uppercase tracking-wider">Perfs</span>
+            </a>
+            <a href="#sponsors" className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#00FF88] transition-colors">
+              <span className="text-xl">🤝</span>
+              <span className="text-[9px] font-black uppercase tracking-wider">Sponsors</span>
+            </a>
+            <a href="#medias" className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#00FF88] transition-colors">
+              <span className="text-xl">📸</span>
+              <span className="text-[9px] font-black uppercase tracking-wider">Médias</span>
+            </a>
+            <div className="w-[1px] h-8 bg-white/10 mx-1"></div>
+            <div className="flex gap-2">
+              {links.slice(0, 2).map((link, idx) => (
+                <a
+                  key={idx}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm hover:bg-white/20 hover:text-[#00FF88] transition-colors"
+                >
+                  {link.icon || "🔗"}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+
       </motion.div>
       </div>
     </div>
