@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,8 +35,14 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
+        <link rel="icon" href="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/PhotoRoom-20260504_162240.png" />
+        <link rel="apple-touch-icon" href="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/PhotoRoom-20260504_162240.png" />
         <link rel="manifest" href="/manifest.json" />
-        <script
+      </head>
+      <body className="antialiased bg-black text-white min-h-screen flex flex-col justify-between">
+        <Script
+          id="sw-reg"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
@@ -53,8 +60,6 @@ export default function RootLayout({
             `,
           }}
         />
-      </head>
-      <body className="antialiased bg-black text-white min-h-screen flex flex-col justify-between">
         <div className="flex-grow">
           {children}
         </div>

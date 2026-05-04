@@ -13,11 +13,23 @@ export default function Home() {
 
       {/* Header */}
       <header className="relative z-10 max-w-6xl mx-auto w-full px-6 py-6 flex items-center justify-between select-none">
-        <Link href="/" className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300">
-          BioAthlete
+        <Link href="/" className="flex items-center gap-3 group">
+          <img 
+            src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png" 
+            alt="BioAthlete Logo" 
+            className="h-8 md:h-10 object-contain group-hover:opacity-100 transition-opacity"
+            onError={(e) => {
+              // Fallback just in case the file name is slightly different
+              e.currentTarget.style.display = 'none';
+              e.currentTarget.parentElement?.querySelector('.fallback-text')?.classList.remove('hidden');
+            }}
+          />
+          <span className="fallback-text hidden text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300">
+            BioAthlete
+          </span>
         </Link>
-        <Link href="/login" className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold rounded-xl text-gray-300 transition-all duration-300 select-none">
-          Espace Athlète
+        <Link href="/login" className="px-5 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/50 text-xs font-bold rounded-xl text-white transition-all duration-300 select-none shadow-lg shadow-black/20">
+          Se connecter
         </Link>
       </header>
 

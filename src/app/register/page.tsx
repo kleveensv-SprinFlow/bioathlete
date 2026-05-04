@@ -6,83 +6,145 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
+const availableDisciplines = [
+  "60m", "100m", "200m", "400m",
+  "60mH", "100mH", "110mH", "400mH",
+  "Demi-fond/Fond",
+  "Longueur", "Triple saut", "Hauteur", "Perche",
+  "Poids", "Disque", "Marteau", "Javelot",
+  "Décathlon", "Heptathlon"
+];
+
 export default function RegisterPage() {
   const router = useRouter();
 
-  const [step, setStep] = useState<1 | 2>(1);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [acceptTerms, setAcceptTerms] = useState(false);
-  const [otpToken, setOtpToken] = useState("");
-  const [error, setError] = useState("");
+  // Onboarding Steps: 1 (Identity), 2 (Discipline Filter), 3 (Sponsor), 4 (Security & Create), 5 (Upsell Premium), 6 (OTP Verification)
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Modal states
-  const [activeModal, setActiveModal] = useState<"cgu" | "privacy" | null>(null);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    birthDate: "",
+    discipline: "",
+    hasSponsor: false,
+    sponsorName: "",
+    email: "",
+    password: "",
+  });
 
-  const handleRegisterStep1 = async (e: React.FormEvent) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [otpToken, setOtpToken] = useState("");
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData({ ...formData, [field]: value });
+  };
+
+  // Filter disciplines based on user search
+  const filteredDisciplines = availableDisciplines.filter((d) =>
+    d.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Stepper Validation Handlers
+  const handleNextStep1 = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    if (!acceptTerms) {
-      setError("Vous devez obligatoirement accepter les CGU/CGV et la Politique de Confidentialité avant de continuer.");
+    if (!formData.firstName || !formData.lastName || !formData.birthDate) {
+      setError("Veuillez remplir tous les champs d'identité.");
       return;
     }
+    setStep(2);
+  };
 
+  const handleNextStep2 = () => {
+    setError("");
+    if (!formData.discipline) {
+      setError("Veuillez sélectionner une discipline.");
+      return;
+    }
+    setStep(3);
+  };
+
+  const handleNextStep3 = () => {
+    setError("");
+    if (formData.hasSponsor && !formData.sponsorName) {
+      setError("Veuillez préciser le nom de votre sponsor.");
+      return;
+    }
+    setStep(4);
+  };
+
+  // Create User via Supabase & insert profile details
+  const handleCreateAccountStep4 = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
     setLoading(true);
 
     try {
+      if (!formData.email || !formData.password) {
+        setError("L'e-mail et le mot de passe sont obligatoires.");
+        setLoading(false);
+        return;
+      }
+
       const response = await supabase.auth.signUp({
-        email: email.trim(),
-        password: password,
+        email: formData.email.trim(),
+        password: formData.password,
       });
 
       if (response.error) {
-        if (response.error.message.toLowerCase().includes("confirmation mail")) {
-          setError(
-            "Erreur Brevo / Supabase SMTP : Impossible d'envoyer l'e-mail de confirmation. Veuillez vérifier sur Brevo que l'adresse 'bioathletethics@gmail.com' est bien un expéditeur autorisé (Sender) et que vous avez utilisé la Master Key SMTP (et non la clé API standard)."
-          );
-        } else {
-          setError(response.error.message);
-        }
-      } else if (response.data?.user) {
-        // Create profile
+        setError(response.error.message);
+        setLoading(false);
+        return;
+      }
+
+      if (response.data?.user) {
+        // Build readable unique username fallback
+        const generatedUsername =
+          formData.firstName.toLowerCase().replace(/[^a-z0-9]/g, "") +
+          "-" +
+          Date.now().toString().slice(-4);
+
+        const bio = `Discipline : ${formData.discipline}${
+          formData.hasSponsor ? ` • Sponsor : ${formData.sponsorName}` : ""
+        }${formData.birthDate ? ` • Date de naissance : ${formData.birthDate}` : ""}`;
+
+        // Insert structured athlete details into the database profiles row
         await supabase.from("profiles").insert([
           {
             user_id: response.data.user.id,
-            username: "sprint-mich-" + Date.now().toString().slice(-4),
+            username: generatedUsername,
+            full_name: `${formData.firstName} ${formData.lastName}`,
+            bio: bio,
             is_premium: false,
-          }
+          },
         ]);
-        
+
         if (response.data.session) {
           router.push("/dashboard");
         } else {
-          setStep(2);
+          setStep(5);
         }
       } else {
-        setError("Une erreur inattendue est survenue.");
+        setError("Une erreur inattendue est survenue lors de la création.");
       }
-    } catch (err) {
-      console.error("Erreur signUp Supabase:", err);
-      if (err instanceof Error && err.message.toLowerCase().includes("confirmation mail")) {
-        setError(
-          "Erreur Brevo / Supabase SMTP : Impossible d'envoyer l'e-mail de confirmation. Veuillez vérifier sur Brevo que l'adresse 'bioathletethics@gmail.com' est bien un expéditeur autorisé (Sender) et que vous avez utilisé la Master Key SMTP (et non la clé API standard)."
-        );
-      } else {
-        setError("Erreur serveur ou de connexion réseau lors de l'inscription.");
-      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Erreur de connexion lors de l'inscription.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerifyStep2 = async (e: React.FormEvent) => {
+  // OTP token verification step
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!otpToken || otpToken.length !== 6) {
-      setError("Veuillez entrer un code de vérification valide à 6 chiffres.");
+    if (!otpToken || otpToken.length < 6) {
+      setError("Veuillez entrer le code de vérification à 6 chiffres.");
       return;
     }
 
@@ -90,80 +152,84 @@ export default function RegisterPage() {
 
     try {
       const { data, error: otpError } = await supabase.auth.verifyOtp({
-        email,
+        email: formData.email.trim(),
         token: otpToken,
         type: "signup",
       });
 
       if (otpError) {
-        setError(otpError.message === "Email not confirmed" ? "Code de vérification incorrect ou expiré." : otpError.message);
+        setError(otpError.message);
       } else if (data.user || data.session) {
         router.push("/dashboard");
       } else {
         setError("Échec de la validation. Veuillez réessayer.");
       }
-    } catch {
-      setError("Erreur lors de la confirmation.");
+    } catch (err: any) {
+      setError("Erreur de confirmation.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500 selection:text-black select-none relative overflow-hidden">
-      {/* Background neon glows */}
-      <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[140px] pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500 selection:text-black select-none relative overflow-hidden flex flex-col justify-between">
+      
+      {/* Dynamic Background Neon Glowing Halo Lights */}
+      <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[140px] pointer-events-none z-0 select-none"></div>
+      <div className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none z-0 select-none"></div>
 
-      {/* Main Container */}
-      <div className="relative z-10 max-w-lg mx-auto px-5 py-12 flex flex-col items-center gap-10">
+      {/* Main Form Stepper Wrapper */}
+      <div className="relative z-10 max-w-lg mx-auto w-full px-5 py-12 flex flex-col items-center justify-center gap-10 flex-grow select-none">
         
-        {/* Mock Profile: Sprint-Mich with Pixel avatar */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="w-full backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col items-center gap-4 text-center select-none"
-        >
-          <div className="w-24 h-24 rounded-full border-2 border-emerald-500/30 p-1 flex items-center justify-center overflow-hidden bg-neutral-900">
-            <img
-              src="https://api.dicebear.com/7.x/pixel-art/svg?seed=SprintMich"
-              alt="Sprint-Mich"
-              width={96}
-              height={96}
-              className="w-full h-full object-cover rounded-full select-none"
-              loading="lazy"
-            />
-          </div>
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-xl">
-              Sprint-Mich
-            </span>
-            <h2 className="text-xl font-black text-white mt-3 tracking-tight">Sprint-Mich</h2>
-            <p className="text-xs text-gray-400 mt-1 uppercase font-semibold tracking-wider">
-              Sprinteur 100m
-            </p>
-          </div>
+        <Link href="/" className="flex items-center justify-center gap-2 group select-none">
+          <img 
+            src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png" 
+            alt="BioAthlete Logo" 
+            className="h-14 object-contain group-hover:opacity-100 transition-opacity drop-shadow-[0_0_12px_rgba(0,255,136,0.2)] select-none"
+          />
+        </Link>
 
-          <div className="grid grid-cols-2 gap-3 w-full mt-2">
-            <div className="p-3 backdrop-blur-xl bg-white/5 border border-white/5 rounded-2xl flex flex-col gap-1 text-left">
-              <span className="text-[8px] uppercase tracking-wider text-gray-500 font-bold">Records</span>
-              <span className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-400">
-                100m • 9.98s
+        {/* Dynamic Premium Visually Progress Stepper Bar */}
+        {step < 6 && (
+          <div className="w-full flex flex-col gap-3 select-none">
+            <div className="flex flex-col gap-1 text-center mb-1">
+              <h4 className="text-sm font-black uppercase tracking-wider text-white">
+                {step === 1 && "Faisons connaissance"}
+                {step === 2 && "Votre terrain de jeu"}
+                {step === 3 && "Vos partenaires"}
+                {step === 4 && "Verrouillez votre espace"}
+                {step === 5 && "Passez au niveau supérieur"}
+              </h4>
+              <p className="text-xs text-gray-400 font-medium">
+                {step === 1 && "C'est la base de votre future vitrine professionnelle."}
+                {step === 2 && "Pour adapter vos statistiques et le suivi de vos chronos."}
+                {step === 3 && "Mettons en lumière les sponsors qui vous soutiennent."}
+                {step === 4 && "Sécurisez l'accès à vos performances et générez votre profil."}
+                {step === 5 && "Découvrez les avantages d'un profil Élite."}
+              </p>
+            </div>
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                Onboarding <span className="text-[#00FF88]">Étape {step} / 5</span>
+              </span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                {Math.round((step / 5) * 100)}%
               </span>
             </div>
-            <div className="p-3 backdrop-blur-xl bg-white/5 border border-white/5 rounded-2xl flex flex-col gap-1 text-left">
-              <span className="text-[8px] uppercase tracking-wider text-gray-500 font-bold">Sponsors</span>
-              <span className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-400">
-                SpikeSpeed
-              </span>
+            <div className="w-full h-1 bg-white/5 border border-white/10 rounded-full overflow-hidden select-none">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${(step / 5) * 100}%` }}
+                transition={{ duration: 0.4 }}
+                className="h-full bg-gradient-to-r from-emerald-400 to-[#00FF88] shadow-[0_0_8px_rgba(0,255,136,0.5)]"
+              />
             </div>
           </div>
-        </motion.div>
+        )}
 
-        {/* Form and CTA depending on the Step */}
         <AnimatePresence mode="wait">
-          {step === 1 ? (
+          {/* STEP 1: Identity */}
+          {step === 1 && (
             <motion.div
               key="step1"
               initial={{ opacity: 0, x: -20 }}
@@ -173,133 +239,457 @@ export default function RegisterPage() {
               className="w-full backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col gap-6"
             >
               <div className="text-center select-none">
-                <h3 className="text-xl font-black tracking-tight text-white">
-                  Étape 1: Inscrivez-vous
+                <h3 className="text-xl font-black tracking-tight text-white uppercase select-none">
+                  Identité de l&apos;athlète
                 </h3>
                 <p className="text-gray-400 text-xs font-medium mt-1">
-                  Et accédez aux fonctionnalités Élite
+                  Présentez-vous pour commencer
                 </p>
               </div>
 
-              <form onSubmit={handleRegisterStep1} className="flex flex-col gap-4">
+              <form onSubmit={handleNextStep1} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Adresse e-mail
+                    Prénom
                   </label>
                   <input
-                    type="email"
-                    placeholder="athlete@bioathlete.space"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                    type="text"
                     required
+                    placeholder="Ex: Michael"
+                    value={formData.firstName}
+                    onChange={(e) => handleInputChange("firstName", e.target.value)}
+                    className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Mot de passe
+                    Nom
                   </label>
                   <input
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                    type="text"
                     required
+                    placeholder="Ex: Johnson"
+                    value={formData.lastName}
+                    onChange={(e) => handleInputChange("lastName", e.target.value)}
+                    className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
                   />
                 </div>
 
-                {/* Consent Checkbox and buttons opening Modals */}
-                <div className="flex items-start gap-2.5 px-1 py-1">
-                  <input
-                    id="terms"
-                    type="checkbox"
-                    checked={acceptTerms}
-                    onChange={(e) => setAcceptTerms(e.target.checked)}
-                    className="w-4 h-4 mt-0.5 rounded border border-white/20 bg-black checked:bg-emerald-500 focus:ring-0 transition-all cursor-pointer"
-                  />
-                  <label htmlFor="terms" className="text-[10px] text-gray-400 font-medium leading-relaxed select-none">
-                    J&apos;accepte les{" "}
-                    <button
-                      type="button"
-                      onClick={() => setActiveModal("cgu")}
-                      className="text-emerald-400 hover:underline font-bold transition-all cursor-pointer"
-                    >
-                      CGU/CGV
-                    </button>{" "}
-                    et la{" "}
-                    <button
-                      type="button"
-                      onClick={() => setActiveModal("privacy")}
-                      className="text-emerald-400 hover:underline font-bold transition-all cursor-pointer"
-                    >
-                      Politique de Confidentialité
-                </button>.
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Date de naissance
                   </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.birthDate}
+                    onChange={(e) => handleInputChange("birthDate", e.target.value)}
+                    className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                  />
                 </div>
 
                 {error && (
-                  <p className="text-red-400 border border-red-500/30 bg-red-500/10 text-xs font-semibold px-3 py-2 rounded-xl animate-pulse select-none leading-relaxed">
+                  <p className="text-red-400 border border-red-500/30 bg-red-500/10 text-xs font-semibold px-3 py-2 rounded-xl animate-pulse leading-relaxed">
                     {error}
                   </p>
                 )}
 
                 <button
                   type="submit"
-                  disabled={loading}
                   className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 mt-1 select-none"
                 >
-                  {loading ? "Chargement..." : "S'inscrire"}
+                  Suivant
                 </button>
               </form>
 
-              <div className="text-center select-none pt-2 border-t border-white/5">
-                <p className="text-[11px] text-gray-400">
-                  Vous avez déjà un compte ?{" "}
+              <div className="text-center pt-2 border-t border-white/5 select-none">
+                <p className="text-xs text-gray-400">
+                  Vous possédez déjà un compte ?{" "}
                   <Link href="/login" className="text-emerald-400 hover:underline font-bold transition-all">
                     Se connecter
                   </Link>
                 </p>
               </div>
             </motion.div>
-          ) : (
+          )}
+
+          {/* STEP 2: Searchable dropdown selectable filter */}
+          {step === 2 && (
             <motion.div
               key="step2"
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
+              exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.4 }}
-              className="w-full backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col gap-6 select-none"
+              className="w-full backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col gap-6"
             >
               <div className="text-center select-none">
-                <h3 className="text-xl font-black tracking-tight text-white select-none">
-                  Étape 2: Confirmation OTP
+                <h3 className="text-xl font-black tracking-tight text-white uppercase select-none">
+                  Discipline d&apos;athlétisme
                 </h3>
-                <p className="text-gray-400 text-xs font-medium select-none mt-1 leading-relaxed">
-                  Un code à 6 chiffres a été envoyé à :<br />
-                  <span className="text-emerald-400 font-bold select-text">{email}</span>
+                <p className="text-gray-400 text-xs font-medium mt-1">
+                  Sélectionnez votre spécialité ou recherchez-la
                 </p>
               </div>
 
-              <form onSubmit={handleVerifyStep2} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-4 relative">
+                <div className="flex flex-col gap-1 relative select-none">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Code à 6 chiffres
+                    Rechercher une discipline
                   </label>
                   <input
                     type="text"
-                    maxLength={6}
-                    placeholder="123456"
-                    value={otpToken}
-                    onChange={(e) => setOtpToken(e.target.value)}
-                    className="w-full p-4 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-base text-center tracking-[0.4em] font-black text-emerald-400 placeholder-gray-700"
+                    placeholder="Ex: 100m, Sauts, Haies..."
+                    value={searchQuery}
+                    onFocus={() => setShowDropdown(true)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setShowDropdown(true);
+                    }}
+                    className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                  />
+                  {showDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute top-full left-0 right-0 bg-neutral-900 border border-white/15 max-h-48 overflow-y-auto rounded-2xl mt-1 z-50 flex flex-col gap-1 p-2 shadow-2xl select-none"
+                    >
+                      {filteredDisciplines.length > 0 ? (
+                        filteredDisciplines.map((d, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => {
+                              handleInputChange("discipline", d);
+                              setSearchQuery(d);
+                              setShowDropdown(false);
+                            }}
+                            className={`w-full text-left p-3 text-xs font-medium rounded-xl transition-all select-none ${
+                              formData.discipline === d
+                                ? "bg-emerald-500/20 text-emerald-400 font-bold"
+                                : "text-gray-300 hover:bg-white/5"
+                            }`}
+                          >
+                            🏃 {d}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-gray-500 text-xs p-3">Aucune discipline trouvée.</p>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
+
+                {formData.discipline && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-3.5 rounded-xl text-xs font-bold text-center select-none">
+                    Spécialité choisie : <span className="text-white font-black">{formData.discipline}</span>
+                  </div>
+                )}
+
+                {error && (
+                  <p className="text-red-400 border border-red-500/30 bg-red-500/10 text-xs font-semibold px-3 py-2 rounded-xl animate-pulse leading-relaxed">
+                    {error}
+                  </p>
+                )}
+
+                <div className="grid grid-cols-2 gap-3 w-full mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="w-full py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black text-xs tracking-wider uppercase rounded-2xl transition-all duration-300 select-none"
+                  >
+                    Retour
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextStep2}
+                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 select-none"
+                  >
+                    Suivant
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 3: Sponsoring */}
+          {step === 3 && (
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.4 }}
+              className="w-full backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col gap-6"
+            >
+              <div className="text-center select-none">
+                <h3 className="text-xl font-black tracking-tight text-white uppercase select-none">
+                  Gestion Sponsors
+                </h3>
+                <p className="text-gray-400 text-xs font-medium mt-1">
+                  Précisez vos partenariats actuels
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2 select-none">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Avez-vous un sponsor ?
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleInputChange("hasSponsor", true)}
+                      className={`py-3.5 text-xs font-black tracking-wider rounded-2xl border uppercase transition-all select-none ${
+                        formData.hasSponsor
+                          ? "bg-emerald-500 border-emerald-500 text-black shadow-lg"
+                          : "bg-neutral-900 border-white/10 text-gray-400 hover:border-white/20"
+                      }`}
+                    >
+                      Oui
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleInputChange("hasSponsor", false);
+                        handleInputChange("sponsorName", "");
+                      }}
+                      className={`py-3.5 text-xs font-black tracking-wider rounded-2xl border uppercase transition-all select-none ${
+                        !formData.hasSponsor
+                          ? "bg-white/10 border-white/20 text-white shadow-lg"
+                          : "bg-neutral-900 border-white/10 text-gray-400 hover:border-white/20"
+                      }`}
+                    >
+                      Non
+                    </button>
+                  </div>
+                </div>
+
+                {formData.hasSponsor && (
+                  <div className="flex flex-col gap-1 select-none animate-fadeIn">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                      Nom du sponsor
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: SpikeSpeed, Nike..."
+                      value={formData.sponsorName}
+                      onChange={(e) => handleInputChange("sponsorName", e.target.value)}
+                      className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                    />
+                  </div>
+                )}
+
+                {error && (
+                  <p className="text-red-400 border border-red-500/30 bg-red-500/10 text-xs font-semibold px-3 py-2 rounded-xl animate-pulse leading-relaxed">
+                    {error}
+                  </p>
+                )}
+
+                <div className="grid grid-cols-2 gap-3 w-full mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setStep(2)}
+                    className="w-full py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black text-xs tracking-wider uppercase rounded-2xl transition-all duration-300 select-none"
+                  >
+                    Retour
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextStep3}
+                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 select-none"
+                  >
+                    Suivant
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 4: Security & Create */}
+          {step === 4 && (
+            <motion.div
+              key="step4"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.4 }}
+              className="w-full backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col gap-6"
+            >
+              <div className="text-center select-none">
+                <h3 className="text-xl font-black tracking-tight text-white uppercase select-none">
+                  Sécurité du compte
+                </h3>
+                <p className="text-gray-400 text-xs font-medium mt-1">
+                  Créez vos identifiants de connexion
+                </p>
+              </div>
+
+              <form onSubmit={handleCreateAccountStep4} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1 select-none">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Adresse e-mail
+                  </label>
+                  <input
+                    type="email"
                     required
+                    placeholder="athlete@bioathlete.space"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1 select-none">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Mot de passe
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    className="w-full p-3.5 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
                   />
                 </div>
 
                 {error && (
-                  <p className="text-red-400 border border-red-500/30 bg-red-500/10 text-xs font-semibold px-3 py-2 rounded-xl animate-pulse select-none leading-relaxed">
+                  <p className="text-red-400 border border-red-500/30 bg-red-500/10 text-xs font-semibold px-3 py-2 rounded-xl animate-pulse leading-relaxed">
+                    {error}
+                  </p>
+                )}
+
+                <div className="grid grid-cols-2 gap-3 w-full mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setStep(3)}
+                    className="w-full py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black text-xs tracking-wider uppercase rounded-2xl transition-all duration-300 select-none"
+                  >
+                    Retour
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 select-none flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+                        <span>Création...</span>
+                      </>
+                    ) : (
+                      "Créer mon profil"
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          )}
+
+          {/* STEP 5: Premium Upsell */}
+          {step === 5 && (
+            <motion.div
+              key="step5"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.4 }}
+              className="w-full backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col gap-6"
+            >
+              <div className="text-center select-none">
+                <div className="text-5xl mb-2">⭐</div>
+                <h3 className="text-xl font-black tracking-tight text-white uppercase select-none">
+                  Passez à l&apos;Élite Premium
+                </h3>
+                <p className="text-gray-400 text-xs font-medium mt-1 leading-relaxed">
+                  Activez des outils premium pour booster votre visibilité
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 select-none">
+                <div className="p-3 bg-white/5 border border-white/5 rounded-2xl flex items-center gap-3">
+                  <span className="text-xl">📊</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">Statistiques de visites</span>
+                    <span className="text-[10px] text-gray-400">Découvrez qui visite votre profil</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-white/5 border border-white/5 rounded-2xl flex items-center gap-3">
+                  <span className="text-xl">🔗</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">Liens personnalisables</span>
+                    <span className="text-[10px] text-gray-400">Ajoutez des liens illimités</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-white/5 border border-white/5 rounded-2xl flex items-center gap-3">
+                  <span className="text-xl">💎</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">Badge premium</span>
+                    <span className="text-[10px] text-gray-400">Affichez votre statut d&apos;élite</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 w-full mt-2 select-none">
+                <button
+                  type="button"
+                  onClick={() => setStep(6)}
+                  className="w-full py-4 bg-[#00FF88] hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(0,255,136,0.3)] transition-all duration-300 select-none"
+                >
+                  Découvrir les offres
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep(6)}
+                  className="w-full py-3 hover:underline text-gray-500 font-black text-[10px] tracking-wider uppercase select-none cursor-pointer"
+                >
+                  Ignorer pour le moment
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 6: OTP token Validation step */}
+          {step === 6 && (
+            <motion.div
+              key="step6"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.4 }}
+              className="w-full backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col gap-6 select-none"
+            >
+              <div className="text-center select-none">
+                <h3 className="text-xl font-black tracking-tight text-white uppercase select-none">
+                  Confirmation de compte
+                </h3>
+                <p className="text-gray-400 text-xs font-medium select-none mt-1 leading-relaxed">
+                  Un code OTP à 6 chiffres a été envoyé à :<br />
+                  <span className="text-[#00FF88] font-bold">{formData.email}</span>
+                </p>
+              </div>
+
+              <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1 select-none">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    Code OTP à 6 chiffres
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={8}
+                    placeholder="123456"
+                    value={otpToken}
+                    onChange={(e) => setOtpToken(e.target.value)}
+                    className="w-full p-4 bg-neutral-900 border border-white/10 rounded-2xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-base text-center tracking-[0.4em] font-black text-emerald-400 placeholder-gray-700"
+                  />
+                </div>
+
+                {error && (
+                  <p className="text-red-400 border border-red-500/30 bg-red-500/10 text-xs font-semibold px-3 py-2 rounded-xl animate-pulse leading-relaxed">
                     {error}
                   </p>
                 )}
@@ -307,184 +697,41 @@ export default function RegisterPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 mt-1 select-none"
+                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 select-none flex items-center justify-center gap-2 mt-1"
                 >
-                  {loading ? "Vérification..." : "Valider mon compte"}
+                  {loading ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+                      <span>Validation...</span>
+                    </>
+                  ) : (
+                    "Valider mon compte"
+                  )}
                 </button>
               </form>
-
-              <div className="text-center select-none pt-2 border-t border-white/5">
-                <button
-                  onClick={() => setStep(1)}
-                  type="button"
-                  className="text-[11px] text-gray-400 hover:text-emerald-400 underline font-bold"
-                >
-                  Retour à l&apos;étape précédente
-                </button>
-              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
       </div>
 
-      {/* MODALS WITH CUSTOM SCROLLBAR */}
-      <AnimatePresence>
-        {activeModal === "cgu" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-6 select-none"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="max-w-xl w-full backdrop-blur-xl bg-white/10 border border-white/20 p-6 rounded-3xl shadow-2xl flex flex-col gap-4 max-h-[85vh] select-none"
-            >
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <h3 className="text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 uppercase">
-                  CGU & CGV Complètes
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setActiveModal(null)}
-                  className="text-gray-400 hover:text-emerald-400 font-bold transition-all cursor-pointer text-sm"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-5 text-xs text-gray-300 leading-relaxed overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-emerald-500/30 scrollbar-track-transparent select-none">
-                <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">Article 1. Objet du service et conditions d&apos;accès</h4>
-                  <p>
-                    BioAthlete.space est un service édité par BioAthlete SAS permettant aux sportifs de publier une vitrine digitale. L&apos;accès au service est restreint aux personnes physiques majeures agissant à titre personnel ou professionnel.
-                  </p>
-                </section>
-
-                <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">Article 2. Licence de diffusion et Propriété intellectuelle</h4>
-                  <p>
-                    En publiant du contenu (images, vidéos, informations sportives) sur le site, l&apos;athlète accorde à BioAthlete SAS une licence mondiale, gratuite et non exclusive, d&apos;afficher et de reproduire ses médias uniquement dans le cadre de l&apos;exploitation du service BioAthlete. L&apos;athlète garantit expressément posséder l&apos;ensemble des droits de diffusion sur les médias soumis.
-                  </p>
-                </section>
-
-                <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">Article 3. Responsabilité de BioAthlete SAS</h4>
-                  <p>
-                    L&apos;utilisateur décharge BioAthlete de toute responsabilité en cas d&apos;interruption technique, de litige ou de mauvaise exécution d&apos;un contrat avec un sponsor trouvé par l&apos;intermédiaire de la plateforme. En aucun cas BioAthlete ne saurait être tenu pour responsable de toute blessure survenue lors des entraînements.
-                  </p>
-                </section>
-
-                <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">Article 4. Véracité des données</h4>
-                  <p>
-                    L&apos;utilisateur est l&apos;unique garant de l&apos;exactitude des performances chronométriques saisies. La saisie de faux records (ex: temps falsifiés au 60m ou 100m) entraînera la suspension immédiate du compte de l&apos;athlète.
-                  </p>
-                </section>
-
-                <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">Article 5. Conditions Financières (Gestion Stripe)</h4>
-                  <p>
-                    La souscription aux options Élite ou Premium entraîne la facturation d&apos;un abonnement récurrent selon la grille tarifaire en vigueur. Le traitement des données financières et bancaires est géré exclusivement par notre partenaire tiers agréé **Stripe**. Aucun remboursement ne sera effectué après l&apos;activation des services premium.
-                  </p>
-                </section>
-
-                <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">Article 6. Clause de Juridiction</h4>
-                  <p>
-                    Les présentes conditions sont soumises au droit français. Tout litige relatif à leur interprétation ou leur exécution relève de la compétence exclusive des tribunaux français compétents.
-                  </p>
-                </section>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 font-black tracking-wide text-xs uppercase text-black rounded-xl transition-all duration-300 mt-2 select-none"
-              >
-                Fermer et continuer
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {activeModal === "privacy" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-6 select-none"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="max-w-xl w-full backdrop-blur-xl bg-white/10 border border-white/20 p-6 rounded-3xl shadow-2xl flex flex-col gap-4 max-h-[85vh] select-none"
-            >
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <h3 className="text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 uppercase">
-                  Politique de Confidentialité
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setActiveModal(null)}
-                  className="text-gray-400 hover:text-emerald-400 font-bold transition-all cursor-pointer text-sm"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-5 text-xs text-gray-300 leading-relaxed overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-emerald-500/30 scrollbar-track-transparent select-none">
-                <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">1. Données collectées</h4>
-                  <p>
-                    Dans le cadre de l&apos;utilisation de notre site, nous collectons les données suivantes : adresse e-mail, identifiant utilisateur unique, performances sportives, liens de réseaux sociaux, adresse IP et logs techniques de connexion.
-                  </p>
-                </section>
-
-                <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">2. Cookies techniques</h4>
-                  <p>
-                    Le site BioAthlete.space utilise des cookies strictement nécessaires au bon fonctionnement technique de l&apos;application (persistance de la session d&apos;authentification Supabase). Aucun cookie de suivi publicitaire tiers n&apos;est déposé.
-                  </p>
-                </section>
-
-                <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">3. Hébergement par Supabase</h4>
-                  <p>
-                    Toutes les données de compte sont chiffrées et enregistrées de manière sécurisée par notre prestataire technique tiers **Supabase**, en conformité avec le RGPD.
-                  </p>
-                </section>
-
-                <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">4. Gestion des paiements (Stripe)</h4>
-                  <p>
-                    En cas de paiement des services Premium, les données de paiement et d&apos;achat sont exclusivement traitées par le prestataire agréé **Stripe**, qui agit en tant que sous-traitant de paiement indépendant. Aucune donnée bancaire n&apos;est stockée sur nos propres serveurs.
-                  </p>
-                </section>
-
-                <section className="flex flex-col gap-1">
-                  <h4 className="text-emerald-400 font-bold">5. Droits de suppression (RGPD)</h4>
-                  <p>
-                    Tout utilisateur peut demander la suppression intégrale de ses données personnelles à tout moment via son espace personnel ou par simple demande par email.
-                  </p>
-                </section>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 font-black tracking-wide text-xs uppercase text-black rounded-xl transition-all duration-300 mt-2 select-none"
-              >
-                Fermer et continuer
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Modern Footer for visual consistency */}
+      <footer className="w-full py-6 border-t border-white/5 text-center flex flex-col sm:flex-row items-center justify-center gap-4 text-[10px] text-gray-500 font-medium select-none bg-black/30 backdrop-blur-md relative z-10">
+        <p>© {new Date().getFullYear()} BioAthlete. Tous droits réservés.</p>
+        <div className="flex items-center gap-3">
+          <Link href="/cgu" className="hover:text-emerald-400 hover:underline">
+            CGU
+          </Link>
+          <span className="text-white/10 select-none">•</span>
+          <Link href="/confidentialite" className="hover:text-emerald-400 hover:underline">
+            Confidentialité
+          </Link>
+          <span className="text-white/10 select-none">•</span>
+          <Link href="/mentions-legales" className="hover:text-emerald-400 hover:underline">
+            Mentions Légales
+          </Link>
+        </div>
+      </footer>
 
     </div>
   );

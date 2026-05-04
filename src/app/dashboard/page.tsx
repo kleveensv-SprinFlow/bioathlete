@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import jsPDF from "jspdf";
@@ -38,6 +38,22 @@ interface Video {
   title: string;
   user_id?: string;
 }
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
+    }
+  }
+};
+
+const staggerItem = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
 
 const PREDEFINED_EQUIPEMENTIERS = [
   { name: "Nike", logo: "👟 Nike" },
@@ -78,6 +94,122 @@ const ATHLETIC_DISCIPLINES: { [key: string]: string[] } = {
   ]
 };
 
+function LivePreviewModal({
+  setShowFullPreview,
+  avatarUrl,
+  firstNameInput,
+  lastNameInput,
+  bioInput,
+  temps60m,
+  temps100m,
+  performances,
+  sponsors,
+  links
+}: any) {
+  const previewRef = React.useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ container: previewRef });
+  const headerY = useTransform(scrollYProgress, [0, 1], [0, 150]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="fixed inset-0 bg-black/95 backdrop-blur-2xl z-[100] flex flex-col items-center overflow-y-auto"
+      onClick={() => setShowFullPreview(false)}
+      ref={previewRef}
+    >
+      <motion.div
+        initial={{ scale: 0.85, opacity: 0, y: 40 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.85, opacity: 0, y: 40 }}
+        transition={{ type: "spring", stiffness: 200, damping: 25 }}
+        className="relative max-w-md w-full px-5 py-8 flex flex-col items-center gap-6 min-h-screen"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button onClick={() => setShowFullPreview(false)} className="absolute top-4 right-6 w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full flex items-center justify-center text-white font-bold text-lg transition-all z-10">✕</button>
+        
+        <motion.div variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col items-center gap-6 w-full pt-8 pb-8">
+          {/* Main Logo for the Preview */}
+          <div className="flex justify-center select-none">
+            <img 
+              src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png" 
+              alt="BioAthlete Logo" 
+              className="h-9 object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          </div>
+
+          {/* Header with Parallax */}
+          <motion.div variants={staggerItem} style={{ y: headerY }} className="flex flex-col items-center gap-3 text-center w-full z-0">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-[#00FF88] to-emerald-400 p-1 shadow-[0_0_25px_rgba(0,255,136,0.4)] overflow-hidden">
+              {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover rounded-full" /> : <div className="w-full h-full rounded-full bg-black flex items-center justify-center text-3xl font-black text-[#00FF88]">{(firstNameInput || "A").charAt(0)}</div>}
+            </div>
+            <h1 className="text-2xl font-black tracking-tight text-white uppercase drop-shadow-[0_0_15px_rgba(0,255,136,0.3)]">{(firstNameInput || "Prénom").toUpperCase()} {(lastNameInput || "Nom").toUpperCase()}</h1>
+            <p className="text-[#00FF88] text-xs font-extrabold uppercase tracking-widest drop-shadow-[0_0_8px_rgba(0,255,136,0.5)]">Athlète</p>
+            <p className="text-gray-300 text-sm max-w-sm leading-relaxed">{bioInput || "Aucune biographie rédigée."}</p>
+          </motion.div>
+          
+          {/* Performance section in preview */}
+          {(performances.length > 0 || temps60m || temps100m) && (
+            <motion.div variants={staggerItem} className="grid grid-cols-2 gap-3 w-full relative z-10">
+              {temps60m && (
+                <div className="backdrop-blur-xl bg-white/5 border border-[#00FF88]/20 rounded-2xl p-4 flex flex-col gap-1 shadow-[0_0_15px_rgba(0,255,136,0.1)] relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#00FF88]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider relative z-10">60m</span>
+                  <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-[#00FF88] drop-shadow-[0_0_10px_rgba(0,255,136,0.4)] relative z-10">{temps60m}</span>
+                </div>
+              )}
+              {temps100m && (
+                <div className="backdrop-blur-xl bg-white/5 border border-[#00FF88]/20 rounded-2xl p-4 flex flex-col gap-1 shadow-[0_0_15px_rgba(0,255,136,0.1)] relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#00FF88]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider relative z-10">100m</span>
+                  <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-[#00FF88] drop-shadow-[0_0_10px_rgba(0,255,136,0.4)] relative z-10">{temps100m}</span>
+                </div>
+              )}
+              {performances.slice(0, 4).map((perf: any, i: number) => (
+                <div key={i} className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-1 shadow-[0_0_10px_rgba(0,255,136,0.05)]">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{perf.distance}</span>
+                  <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 drop-shadow-[0_0_5px_rgba(0,255,136,0.2)]">{perf.temps}</span>
+                  <span className="text-[9px] text-gray-500 truncate">{perf.competition}</span>
+                </div>
+              ))}
+            </motion.div>
+          )}
+          
+          {sponsors.length > 0 && (
+            <motion.div variants={staggerItem} className="flex flex-wrap items-center justify-center gap-2 w-full mt-2 relative z-10">
+              {sponsors.map((sp: any, i: number) => (
+                <motion.div whileHover={{ scale: 1.05 }} key={i} className="backdrop-blur-xl bg-white/5 border border-white/10 hover:border-[#00FF88]/40 rounded-xl px-3 py-2 text-xs font-bold flex items-center justify-center transition-colors shadow-lg hover:shadow-[0_0_15px_rgba(0,255,136,0.3)] cursor-pointer">
+                  <span className="text-lg mr-2">{sp.logo}</span>{sp.name}
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+          
+          {links.length > 0 && (
+            <motion.div variants={staggerItem} className="flex flex-col gap-2 w-full mt-2 relative z-10">
+              {links.map((link: any, i: number) => (
+                <motion.div whileHover={{ scale: 1.03 }} key={i} className="w-full flex items-center gap-3 p-4 backdrop-blur-xl bg-white/5 border border-white/10 hover:border-[#00FF88]/50 rounded-2xl transition-all shadow-xl hover:shadow-[0_0_20px_rgba(0,255,136,0.2)] cursor-pointer group">
+                  <span className="text-xl p-2 bg-neutral-900 group-hover:bg-[#00FF88]/20 transition-colors rounded-xl flex items-center justify-center">{link.icon}</span>
+                  <span className="font-bold text-sm text-white group-hover:text-[#00FF88] transition-colors">{link.title}</span>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+          
+          <motion.p variants={staggerItem} className="text-[9px] text-gray-600 font-medium uppercase tracking-widest mt-6">
+            Optimisé par <span className="text-[#00FF88]/80 font-bold">BioAthlete.space</span>
+          </motion.p>
+        </motion.div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -88,12 +220,14 @@ export default function DashboardPage() {
   const [firstNameInput, setFirstNameInput] = useState("");
   const [lastNameInput, setLastNameInput] = useState("");
   const [profSuccess, setProfSuccess] = useState("");
+  const [profError, setProfError] = useState("");
   const [isPremium, setIsPremium] = useState(false);
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAddPerfModal, setShowAddPerfModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showFullPreview, setShowFullPreview] = useState(false);
 
   // Profile enhancements
   const [bioInput, setBioInput] = useState("");
@@ -110,7 +244,7 @@ export default function DashboardPage() {
   const [views, setViews] = useState(0);
 
   // Form states
-  const [activeTab, setActiveTab] = useState("profil");
+  const [activeTab, setActiveTab] = useState("apercu");
   const [newDate, setNewDate] = useState("");
   const [newDistance, setNewDistance] = useState(""); // Remplacé par "Discipline"
   const [newTemps, setNewTemps] = useState("");
@@ -132,6 +266,8 @@ export default function DashboardPage() {
 
   const [shareText, setShareText] = useState("");
   const [linkError, setLinkError] = useState("");
+  const [temps60m, setTemps60m] = useState("");
+  const [temps100m, setTemps100m] = useState("");
 
   // Load user data and content
   useEffect(() => {
@@ -269,23 +405,52 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!userId) return;
     setProfSuccess("");
+    setProfError("");
 
     const newFullName = `${firstNameInput.trim()} ${lastNameInput.trim()}`.trim() || fullNameInput;
-    const autoUsername = username || (firstNameInput.trim() + "-" + lastNameInput.trim()).toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-") || "athlete";
+    const finalUsername = `${firstNameInput.trim()}-${lastNameInput.trim()}`
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "") || "athlete";
 
     try {
+      // 1. Client-side check before upserting to ensure no other user owns this username
+      if (finalUsername !== username) {
+        const { data: existingUser } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("username", finalUsername)
+          .maybeSingle();
+
+        if (existingUser && existingUser.user_id !== userId) {
+          setProfError("Ce lien d'URL est déjà pris, veuillez en choisir un autre (ex: ajoutez un chiffre).");
+          setTimeout(() => setProfError(""), 5000);
+          return;
+        }
+      }
+
       const { data, error } = await supabase
         .from("profiles")
         .upsert([{
           user_id: userId,
-          username: autoUsername,
+          username: finalUsername,
           full_name: newFullName,
           bio: bioInput,
           avatar_url: avatarUrl
         }], { onConflict: "user_id" })
         .select();
 
-      if (!error && data && data.length > 0) {
+      if (error) {
+        if (error.code === "23505" || error.message?.includes("unique")) {
+          setProfError("Ce lien d'URL est déjà pris, veuillez en choisir un autre (ex: ajoutez un chiffre).");
+          setTimeout(() => setProfError(""), 5000);
+          return;
+        }
+        throw error;
+      }
+
+      if (data && data.length > 0) {
         setUsername(data[0].username);
         setUsernameInput(data[0].username);
         setFullNameInput(data[0].full_name || "");
@@ -293,10 +458,24 @@ export default function DashboardPage() {
         setFirstNameInput(first || "");
         setLastNameInput(rest.join(" ") || "");
         setProfSuccess("Informations de profil enregistrées avec succès !");
-        setTimeout(() => setProfSuccess(""), 3000);
+        setTimeout(() => {
+          setProfSuccess("");
+          setShowProfileModal(false);
+        }, 1500);
+      } else {
+        setUsername(finalUsername);
+        setUsernameInput(finalUsername);
+        setFullNameInput(newFullName);
+        setProfSuccess("Informations de profil enregistrées avec succès !");
+        setTimeout(() => {
+          setProfSuccess("");
+          setShowProfileModal(false);
+        }, 1500);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setProfError("Erreur lors de la sauvegarde : " + (err.message || "Impossible de mettre à jour votre profil."));
+      setTimeout(() => setProfError(""), 5000);
     }
   };
 
@@ -758,373 +937,166 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Navigation Tabs */}
-        <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-none w-full border-b border-white/10">
-          <button
-            onClick={() => setActiveTab("profil")}
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${activeTab === "profil" ? "text-emerald-400 border-b-2 border-emerald-400" : "text-gray-500 hover:text-gray-300"}`}
-          >
-            Profil & Identité
-          </button>
-          <button
-            onClick={() => setActiveTab("performances")}
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${activeTab === "performances" ? "text-emerald-400 border-b-2 border-emerald-400" : "text-gray-500 hover:text-gray-300"}`}
-          >
-            Performances
-          </button>
-          <button
-            onClick={() => setActiveTab("medias")}
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${activeTab === "medias" ? "text-emerald-400 border-b-2 border-emerald-400" : "text-gray-500 hover:text-gray-300"}`}
-          >
-            Médias & Liens
-          </button>
-          <button
-            onClick={() => setActiveTab("sponsors")}
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${activeTab === "sponsors" ? "text-emerald-400 border-b-2 border-emerald-400" : "text-gray-500 hover:text-gray-300"}`}
-          >
-            Sponsors
-          </button>
+        <div className="flex overflow-x-auto gap-1 pb-2 scrollbar-none w-full border-b border-white/10">
+          {[
+            { key: "apercu", label: "Aperçu" },
+            { key: "performances", label: "Performances" },
+            { key: "liens", label: "Mes Liens" },
+            { key: "sponsors", label: "Mes Sponsors" }
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all duration-300 rounded-t-xl ${activeTab === tab.key ? "text-emerald-400 border-b-2 border-emerald-400 bg-emerald-500/5" : "text-gray-500 hover:text-gray-300"}`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* Tab Content: Profil (Live Visitor Preview) */}
-        {activeTab === "profil" && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col gap-6 w-full"
-          >
-            {/* Live Athlete Preview Card */}
-            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl flex flex-col items-center text-center select-none relative overflow-hidden">
-              <div className="absolute top-4 right-4 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-xl">
-                <span className="text-[9px] font-black tracking-wider uppercase text-emerald-400">Aperçu Visiteur</span>
-              </div>
-
-              {avatarUrl ? (
-                <div className="w-24 h-24 rounded-full border-2 border-emerald-500 p-0.5 overflow-hidden bg-neutral-900 mt-4 select-none flex-shrink-0 shadow-[0_0_16px_rgba(16,185,129,0.2)]">
-                  <img src={avatarUrl} alt="Photo" className="w-full h-full object-cover rounded-full" />
+        {/* Tab Content: Aperçu */}
+        {activeTab === "apercu" && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-6 w-full">
+            
+            {/* Blurred Live Preview Card */}
+            <div className="relative rounded-3xl overflow-hidden select-none cursor-pointer group" onClick={() => setShowFullPreview(true)}>
+              <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl flex flex-col items-center text-center relative overflow-hidden filter blur-[3px] group-hover:blur-[2px] transition-all duration-500">
+                <div className="absolute top-4 right-4 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-xl z-10">
+                  <span className="text-[9px] font-black tracking-wider uppercase text-emerald-400">Aperçu Visiteur</span>
                 </div>
-              ) : (
-                <div className="w-24 h-24 rounded-full border border-white/10 bg-neutral-900 mt-4 flex items-center justify-center text-3xl select-none flex-shrink-0">
-                  👤
+                {avatarUrl ? (
+                  <div className="w-20 h-20 rounded-full border-2 border-emerald-500 p-0.5 overflow-hidden bg-neutral-900 mt-2 flex-shrink-0 shadow-[0_0_16px_rgba(16,185,129,0.2)]">
+                    <img src={avatarUrl} alt="Photo" className="w-full h-full object-cover rounded-full" />
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 rounded-full border border-white/10 bg-neutral-900 mt-2 flex items-center justify-center text-2xl flex-shrink-0">👤</div>
+                )}
+                <h2 className="text-lg font-black tracking-tight text-white uppercase mt-3">
+                  {(firstNameInput || "Prénom").toUpperCase()} {(lastNameInput || "Nom").toUpperCase()}
+                </h2>
+                <p className="text-gray-400 text-[10px] mt-1 max-w-xs leading-relaxed line-clamp-2">{bioInput || "Aucune biographie."}</p>
+                <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+                  <span className="text-[9px] text-gray-400 bg-white/5 border border-white/5 px-2 py-0.5 rounded-lg">{performances.length} Perf{performances.length > 1 ? "s" : ""}</span>
+                  <span className="text-[9px] text-gray-400 bg-white/5 border border-white/5 px-2 py-0.5 rounded-lg">{sponsors.length} Sponsor{sponsors.length > 1 ? "s" : ""}</span>
+                  <span className="text-[9px] text-gray-400 bg-white/5 border border-white/5 px-2 py-0.5 rounded-lg">{links.length} Lien{links.length > 1 ? "s" : ""}</span>
                 </div>
-              )}
-
-              <h2 className="text-xl font-black tracking-tight text-white uppercase mt-4">
-                {(firstNameInput || "Prénom").toUpperCase()} {(lastNameInput || "Nom").toUpperCase()}
-              </h2>
-              {bioInput ? (
-                <p className="text-gray-400 text-xs mt-2 max-w-xs leading-relaxed">
-                  {bioInput}
-                </p>
-              ) : (
-                <p className="text-gray-500 text-xs mt-2 italic">Aucune biographie rédigée.</p>
-              )}
-
-              <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
-                <span className="text-[10px] text-gray-400 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
-                  {performances.length} Performance{performances.length > 1 ? "s" : ""}
-                </span>
-                <span className="text-[10px] text-gray-400 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
-                  {sponsors.length} Partenaire{sponsors.length > 1 ? "s" : ""}
-                </span>
-                <span className="text-[10px] text-gray-400 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
-                  {links.length} Lien{links.length > 1 ? "s" : ""}
-                </span>
+              </div>
+              
+              {/* Overlay CTA */}
+              <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-6 py-3 bg-emerald-500 text-black font-black text-xs uppercase tracking-wider rounded-2xl shadow-2xl shadow-emerald-500/30 pointer-events-auto"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowFullPreview(true);
+                  }}
+                >
+                  👁️ Afficher l&apos;aperçu
+                </motion.button>
               </div>
             </div>
 
-            {/* Visit stats */}
-            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl flex items-center justify-between hover:border-emerald-500/20 transition-all duration-300 select-none">
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 select-none">
-                  Statistiques de visites
-                </h3>
-                <p className="text-2xl font-black text-white mt-1 tracking-tight">
-                  {views || 0} <span className="text-xs text-gray-400 font-semibold">vues uniques</span>
-                </p>
-              </div>
-              <div className="text-3xl text-emerald-400/30">👁️</div>
-            </div>
+            {/* Fullscreen Preview with AnimatePresence */}
+            <AnimatePresence>
+              {showFullPreview && (
+                <LivePreviewModal
+                  setShowFullPreview={setShowFullPreview}
+                  avatarUrl={avatarUrl}
+                  firstNameInput={firstNameInput}
+                  lastNameInput={lastNameInput}
+                  bioInput={bioInput}
+                  temps60m={temps60m}
+                  temps100m={temps100m}
+                  performances={performances}
+                  sponsors={sponsors}
+                  links={links}
+                />
+              )}
+            </AnimatePresence>
 
-            {/* Action buttons inside Profile tab to direct to other tabs */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setActiveTab("performances")}
-                className="py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl transition-all duration-300 flex items-center justify-center gap-2"
-              >
-                📊 Performances
-              </button>
-              <button
-                onClick={() => setActiveTab("sponsors")}
-                className="py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl transition-all duration-300 flex items-center justify-center gap-2"
-              >
-                🤝 Sponsors
-              </button>
-            </div>
-
-            {/* Button Média Kit PDF */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleGenerateMediaKit}
-              className="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-500/30 font-extrabold text-sm text-center text-white rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.1)] transition-all duration-300 tracking-wide uppercase select-none mt-1"
-            >
-              📄 Générer mon Média Kit (PDF)
-            </motion.button>
           </motion.div>
         )}
 
         {/* Tab Content: Performances */}
         {activeTab === "performances" && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col gap-6 w-full"
-          >
-            <div className="flex flex-col gap-2">
-              <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                onClick={() => setShowAddPerfModal(true)}
-                className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 font-extrabold text-xs tracking-wider uppercase text-black rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 select-none flex items-center justify-center gap-2"
-              >
-                <span>➕</span>
-                <span>Ajouter une performance</span>
-              </motion.button>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-6 w-full">
+
+            {/* Visit stats */}
+            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-5 shadow-xl flex items-center justify-between hover:border-emerald-500/20 transition-all duration-300 select-none">
+              <div>
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Statistiques de visites</h3>
+                <p className="text-2xl font-black text-white mt-1 tracking-tight">{views || 0} <span className="text-xs text-gray-400 font-semibold">vues</span></p>
+              </div>
+              <div className="text-3xl text-emerald-400/30">👁️</div>
             </div>
 
-            <div className="flex flex-col gap-5">
-              <div className="flex items-center justify-between px-1">
-                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 select-none">
-                  Mes Performances
-                </h3>
-                <span className="text-[10px] text-gray-500 font-bold bg-white/5 border border-white/5 rounded-full px-2.5 py-1">
-                  {performances.length} perf{performances.length > 1 ? "s" : ""}
-                </span>
+            {/* Performances Section */}
+            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl flex flex-col gap-4 select-none">
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400">Mes Performances</h3>
+                <p className="text-[10px] text-gray-500 mt-1">Gérez vos chronos et records sportifs.</p>
               </div>
-
-              {performances.length === 0 ? (
-                <p className="text-xs text-gray-500 italic p-2">Aucune performance ajoutée.</p>
-              ) : (
-                Object.keys(
-                  performances.reduce((acc, perf) => {
-                    if (!acc[perf.distance]) {
-                      acc[perf.distance] = [];
-                    }
-                    acc[perf.distance].push(perf);
-                    return acc;
-                  }, {} as { [key: string]: Performance[] })
-                ).map((distance) => (
-                  <div key={distance} className="flex flex-col gap-2">
-                    <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-400 bg-white/5 border border-white/5 px-3 py-1.5 rounded-xl self-start">
-                      {distance}
-                    </h4>
-                    <div className="flex flex-col gap-2">
-                      {performances
-                        .filter((p) => p.distance === distance)
-                        .map((perf, i) => (
-                          <div
-                            key={perf.id || i}
-                            className="w-full flex items-center justify-between p-4 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors duration-300 select-none"
-                          >
-                            <div>
-                              <span className="font-extrabold text-sm text-emerald-400 mr-2">
-                                {perf.distance}
-                              </span>
-                              <span className="font-semibold text-sm text-white mr-1">{perf.temps}</span>
-                              <span className="text-[10px] text-gray-500 block">
-                                {perf.competition} • {perf.date}
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => handleRemovePerformance(perf.id, i)}
-                              className="text-gray-600 hover:text-red-400 text-xs font-semibold px-2 transition-colors duration-300"
-                            >
-                              Supprimer
-                            </button>
+              <div className="flex flex-col gap-2">
+                <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={() => setShowAddPerfModal(true)} className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 font-extrabold text-xs tracking-wider uppercase text-black rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 flex items-center justify-center gap-2">
+                  <span>➕</span><span>Ajouter une performance</span>
+                </motion.button>
+              </div>
+              <div className="flex flex-col gap-4">
+                {performances.length === 0 ? (
+                  <p className="text-xs text-gray-500 italic p-2">Aucune performance ajoutée.</p>
+                ) : (
+                  Object.keys(performances.reduce((acc, perf) => { if (!acc[perf.distance]) acc[perf.distance] = []; acc[perf.distance].push(perf); return acc; }, {} as { [key: string]: Performance[] })).map((distance) => (
+                    <div key={distance} className="flex flex-col gap-2">
+                      <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-400 bg-white/5 border border-white/5 px-3 py-1.5 rounded-xl self-start">{distance}</h4>
+                      <div className="flex flex-col gap-2">
+                        {performances.filter((p) => p.distance === distance).map((perf, i) => (
+                          <div key={perf.id || i} className="w-full flex items-center justify-between p-4 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors duration-300">
+                            <div><span className="font-extrabold text-sm text-emerald-400 mr-2">{perf.distance}</span><span className="font-semibold text-sm text-white mr-1">{perf.temps}</span><span className="text-[10px] text-gray-500 block">{perf.competition} • {perf.date}</span></div>
+                            <button onClick={() => handleRemovePerformance(perf.id, i)} className="text-gray-600 hover:text-red-400 text-xs font-semibold px-2 transition-colors duration-300">Supprimer</button>
                           </div>
                         ))}
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
+
+            {/* Button Média Kit PDF */}
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleGenerateMediaKit} className="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-500/30 font-extrabold text-sm text-center text-white rounded-2xl shadow-xl transition-all duration-300 tracking-wide uppercase select-none mt-1">
+              📄 Générer mon Média Kit (PDF)
+            </motion.button>
           </motion.div>
         )}
 
-        {/* Tab Content: Médias & Liens */}
-        {activeTab === "medias" && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col gap-8 w-full"
-          >
-            {/* Galerie Photos */}
+        {/* Tab Content: Mes Liens */}
+        {activeTab === "liens" && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-8 w-full">
+            {/* Réseaux & Liens */}
             <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl select-none">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400 mb-4 select-none">
-                Photos
-              </h2>
-              <form onSubmit={handleAddGalleryPhoto} className="flex flex-col gap-4 mb-4">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Titre de la photo (Facultatif)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Meeting de Paris"
-                    value={newGalleryPhotoTitle}
-                    onChange={(e) => setNewGalleryPhotoTitle(e.target.value)}
-                    className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-xs text-white placeholder-gray-600"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Fichier Photo (Upload)
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/png, image/jpeg, image/webp"
-                    onChange={(e) => setNewGalleryPhotoFile(e.target.files ? e.target.files[0] : null)}
-                    className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-white/10 file:text-emerald-400 hover:file:bg-white/20 transition-all cursor-pointer"
-                    required
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={isUploading}
-                  className="w-full py-3 bg-white/10 hover:bg-white/20 font-extrabold text-xs tracking-wider uppercase text-white rounded-xl transition-all duration-300 disabled:opacity-50"
-                >
-                  {isUploading ? "Importation..." : "Ajouter la photo"}
-                </button>
-              </form>
-
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
-                {photoGallery.length === 0 && (
-                  <p className="text-xs text-gray-500 italic p-2">Aucune photo dans la galerie.</p>
-                )}
-                {photoGallery.map((photo) => (
-                  <div key={photo.id} className="relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden group">
-                    <img src={photo.url} alt={photo.title} className="w-full h-full object-cover" onError={(e) => e.currentTarget.src = 'https://api.dicebear.com/7.x/pixel-art/svg?seed=fallback'} />
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <button onClick={() => handleRemoveGalleryPhoto(photo.id)} className="text-red-400 text-xs font-bold">Retirer</button>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400">🔗 Réseaux & Liens</h2>
+                {!isPremium && <span className="text-[9px] text-gray-500 bg-white/5 border border-white/5 px-2 py-1 rounded-lg">{links.length}/3 gratuit</span>}
               </div>
-            </div>
-
-            {/* Vidéos */}
-            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl select-none">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400 mb-4 select-none">
-                Vidéos (Upload direct)
-              </h2>
-              <p className="text-[10px] text-gray-400 mb-4">Max {isPremium ? "3" : "1"} vidéo{isPremium ? "s" : ""} d'une minute max.</p>
-              <form onSubmit={handleAddVideo} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Titre de la vidéo (Facultatif)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Présentation saison"
-                    value={newVideoTitle}
-                    onChange={(e) => setNewVideoTitle(e.target.value)}
-                    className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-xs text-white"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    Fichier Vidéo (.mp4, .mov)
-                  </label>
-                  <input
-                    type="file"
-                    accept="video/mp4, video/quicktime"
-                    onChange={(e) => setNewVideoFile(e.target.files ? e.target.files[0] : null)}
-                    className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-white/10 file:text-emerald-400 hover:file:bg-white/20 transition-all cursor-pointer"
-                    required
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={isUploading}
-                  className="w-full py-3 bg-white/10 hover:bg-white/20 font-extrabold text-xs tracking-wider uppercase text-white rounded-xl transition-all duration-300 disabled:opacity-50"
-                >
-                  {isUploading ? "Importation vidéo..." : "Ajouter Vidéo"}
-                </button>
-              </form>
-
-              <div className="flex flex-col gap-2 mt-4">
-                {videos.length === 0 && <p className="text-xs text-gray-500 italic p-2">Aucune vidéo ajoutée.</p>}
-                {videos.map((vid, i) => (
-                  <div key={vid.id} className="w-full flex items-center justify-between p-3 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl">
-                    <div className="flex flex-col truncate pr-2">
-                      <span className="font-semibold text-sm text-white truncate">{vid.title}</span>
-                      <span className="text-[10px] text-gray-500 truncate">{vid.url}</span>
-                    </div>
-                    <button onClick={() => handleRemoveVideo(vid.id, i)} className="text-gray-600 hover:text-red-400 text-xs font-semibold px-2">
-                      Supprimer
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Liens Réseaux */}
-            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl select-none">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400 mb-4 select-none">
-                Réseaux Sociaux & Liens
-              </h2>
-              <form onSubmit={handleAddLink} className="flex flex-col gap-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                      Nom (ex: Instagram)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Instagram"
-                      value={newLinkTitle}
-                      onChange={(e) => setNewLinkTitle(e.target.value)}
-                      className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-xs text-white"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                    URL
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://..."
-                    value={newLinkUrl}
-                    onChange={(e) => setNewLinkUrl(e.target.value)}
-                    className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-xs text-white"
-                    required
-                  />
-                </div>
+              <form onSubmit={handleAddLink} className="flex flex-col gap-3">
+                <input type="text" placeholder="Nom (ex: Instagram)" value={newLinkTitle} onChange={(e) => setNewLinkTitle(e.target.value)} className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none text-xs text-white" required />
+                <input type="url" placeholder="https://..." value={newLinkUrl} onChange={(e) => setNewLinkUrl(e.target.value)} className="w-full p-3 bg-neutral-900 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none text-xs text-white" required />
                 {linkError && <p className="text-red-400 text-xs font-semibold">{linkError}</p>}
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-white/10 hover:bg-white/20 font-extrabold text-xs tracking-wider uppercase text-white rounded-xl transition-all duration-300"
-                >
-                  Ajouter Lien
+                <button type="submit" disabled={!isPremium && links.length >= 3} className={`w-full py-3.5 font-extrabold text-xs tracking-wider uppercase rounded-xl transition-all duration-300 ${!isPremium && links.length >= 3 ? "bg-gray-800 text-gray-500 cursor-not-allowed border border-white/5" : "bg-emerald-500 hover:bg-emerald-400 text-black shadow-xl"}`}>
+                  {!isPremium && links.length >= 3 ? "🔒 Limite atteinte — Passer Élite" : "Ajouter Lien"}
                 </button>
               </form>
-
               <div className="flex flex-col gap-2 mt-4">
                 {links.length === 0 && <p className="text-xs text-gray-500 italic p-2">Aucun lien ajouté.</p>}
                 {links.map((link, i) => (
                   <div key={link.id} className="w-full flex items-center justify-between p-3 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl">
                     <div className="flex items-center gap-3 truncate pr-2">
                       <span className="text-xl p-2 bg-neutral-900 rounded-xl">{link.icon}</span>
-                      <div className="truncate">
-                        <span className="font-semibold text-sm text-white block truncate">{link.title}</span>
-                        <span className="text-[10px] text-gray-500 block truncate">{link.url}</span>
-                      </div>
+                      <div className="truncate"><span className="font-semibold text-sm text-white block truncate">{link.title}</span><span className="text-[10px] text-gray-500 block truncate">{link.url}</span></div>
                     </div>
-                    <button onClick={() => handleRemoveLink(link.id, i)} className="text-gray-600 hover:text-red-400 text-xs font-semibold px-2">
-                      Supprimer
-                    </button>
+                    <button onClick={() => handleRemoveLink(link.id, i)} className="text-gray-600 hover:text-red-400 text-xs font-semibold px-2">Supprimer</button>
                   </div>
                 ))}
               </div>
@@ -1252,6 +1224,7 @@ export default function DashboardPage() {
             </div>
           </motion.div>
         )}
+
 
         {/* IP rights reminder mention */}
         <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 text-center mt-2 shadow-xl select-none">
@@ -1381,7 +1354,7 @@ export default function DashboardPage() {
                     <input
                       type="text"
                       readOnly
-                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${username || usernameInput || "athlete"}`}
+                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${username}`}
                       className="w-full p-3 bg-neutral-950 border border-white/10 focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white rounded-xl select-all"
                     />
                   </div>
@@ -1392,7 +1365,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => {
                     if (typeof window !== "undefined") {
-                      navigator.clipboard.writeText(`${window.location.origin}/u/${username || usernameInput || "athlete"}`);
+                      navigator.clipboard.writeText(`${window.location.origin}/u/${username}`);
                       setShareText("Lien copié dans le presse-papier !");
                       setTimeout(() => setShareText(""), 3000);
                       setShowShareModal(false);
@@ -1608,9 +1581,9 @@ export default function DashboardPage() {
               )}
 
               <form
-                onSubmit={(e) => {
-                  handleSaveProfileInfo(e);
-                  setShowProfileModal(false);
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  await handleSaveProfileInfo(e);
                 }}
                 className="flex flex-col gap-4"
               >
@@ -1640,6 +1613,8 @@ export default function DashboardPage() {
                     />
                   </div>
                 </div>
+
+
 
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
@@ -1680,6 +1655,9 @@ export default function DashboardPage() {
 
                 {profSuccess && (
                   <p className="text-[10px] text-emerald-400 font-bold select-none">{profSuccess}</p>
+                )}
+                {profError && (
+                  <p className="text-[10px] text-red-400 font-bold select-none">{profError}</p>
                 )}
 
                 <div className="flex flex-col gap-2 mt-2">
