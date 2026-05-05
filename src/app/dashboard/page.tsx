@@ -27,7 +27,8 @@ import {
   ChevronRight, 
   X, 
   ArrowLeft,
-  Camera
+  Camera,
+  Eye
 } from "lucide-react";
 
 interface Performance {
@@ -278,14 +279,14 @@ function LivePreviewModal({
           variants={staggerContainer}
           initial="hidden"
           animate="show"
-          className="w-full flex flex-col gap-16 pb-32 pt-8 select-none"
+          className="w-full flex flex-col gap-16 pb-32 pt-24 select-none"
         >
-          {/* LOGO */}
-          <div className="absolute top-6 left-6 z-50 pointer-events-none">
+          {/* LOGO CENTERED */}
+          <div className="absolute top-[-10px] left-0 right-0 z-50 pointer-events-none flex justify-center">
             <img
               src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png"
               alt="BioAthlete Logo"
-              className="h-8 object-contain brightness-0 opacity-80"
+              className="h-44 object-contain brightness-0 opacity-80"
             />
           </div>
 
@@ -518,7 +519,7 @@ export default function DashboardPage() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showFullPreview, setShowFullPreview] = useState(false);
-  const [profileView, setProfileView] = useState<'menu' | 'identity' | 'performances' | 'links' | 'sponsors'>('menu');
+  const [profileView, setProfileView] = useState<'menu' | 'identity' | 'performances' | 'links' | 'sponsors' | 'photos'>('menu');
   const [justSaved, setJustSaved] = useState(false);
 
   // Profile enhancements
@@ -526,15 +527,30 @@ export default function DashboardPage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [birthDateInput, setBirthDateInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [photoGallery, setPhotoGallery] = useState<{ id: string; url: string; title: string }[]>([]);
+  const [photoGallery, setPhotoGallery] = useState<{ id: string; url: string; title: string; date?: string }[]>([]);
   const [newGalleryPhotoFile, setNewGalleryPhotoFile] = useState<File | null>(null);
   const [newGalleryPhotoTitle, setNewGalleryPhotoTitle] = useState("");
+  const [newGalleryPhotoDate, setNewGalleryPhotoDate] = useState("");
+  const [showAddPhotoModal, setShowAddPhotoModal] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<{ id: string; url: string; title: string; date?: string } | null>(null);
 
   const [performances, setPerformances] = useState<Performance[]>([]);
   const [links, setLinks] = useState<SocialLink[]>([]);
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [views, setViews] = useState(0);
+
+  // Preview handler
+  useEffect(() => {
+    if (!newGalleryPhotoFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(newGalleryPhotoFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [newGalleryPhotoFile]);
 
   // Form states
   const [activeTab, setActiveTab] = useState("apercu");
@@ -808,6 +824,13 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!userId || !newGalleryPhotoFile) return;
 
+    // Limitation check
+    if (!isPremium && photoGallery.length >= 2) {
+      setProfError("Limite de 2 photos atteinte. Passez Élite pour un stockage illimité !");
+      setTimeout(() => setProfError(""), 5000);
+      return;
+    }
+
     setIsUploading(true);
     const publicUrl = await uploadFileToSupabase(newGalleryPhotoFile, 'gallery');
 
@@ -815,23 +838,28 @@ export default function DashboardPage() {
       const newPhoto = {
         id: Date.now().toString(),
         url: publicUrl,
-        title: newGalleryPhotoTitle || ""
+        title: newGalleryPhotoTitle || "",
+        date: newGalleryPhotoDate || new Date().toISOString().split('T')[0]
       };
 
       const updatedPhotos = [...photoGallery, newPhoto];
 
       try {
-        await supabase
+        const { error } = await supabase
           .from("profiles")
           .upsert([{
             user_id: userId,
             username: username || "athlete",
             photos: updatedPhotos
-          }]);
+          }], { onConflict: "user_id" });
+
+        if (error) throw error;
 
         setPhotoGallery(updatedPhotos);
         setNewGalleryPhotoFile(null);
         setNewGalleryPhotoTitle("");
+        setNewGalleryPhotoDate("");
+        setShowAddPhotoModal(false);
       } catch (err) {
         console.error(err);
       }
@@ -845,17 +873,43 @@ export default function DashboardPage() {
     const updatedPhotos = photoGallery.filter(p => p.id !== photoId);
 
     try {
-      await supabase
+      const { error } = await supabase
         .from("profiles")
         .upsert([{
           user_id: userId,
           username: username || "athlete",
           photos: updatedPhotos
-        }]);
+        }], { onConflict: "user_id" });
 
+      if (error) throw error;
       setPhotoGallery(updatedPhotos);
+      setSelectedPhoto(null);
     } catch (err) {
-      console.error(err);
+      console.error("Error removing photo:", err);
+    }
+  };
+
+  const handleUpdateGalleryPhoto = async (photoId: string, newTitle: string, newDate: string) => {
+    if (!userId) return;
+
+    const updatedPhotos = photoGallery.map(p => 
+      p.id === photoId ? { ...p, title: newTitle, date: newDate } : p
+    );
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .upsert([{
+          user_id: userId,
+          username: username || "athlete",
+          photos: updatedPhotos
+        }], { onConflict: "user_id" });
+
+      if (error) throw error;
+      setPhotoGallery(updatedPhotos);
+      setSelectedPhoto(null);
+    } catch (err) {
+      console.error("Error updating photo:", err);
     }
   };
 
@@ -1730,6 +1784,188 @@ export default function DashboardPage() {
           )}
         </AnimatePresence>
 
+        <AnimatePresence>
+          {showAddPhotoModal && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[150] flex items-center justify-center p-4 select-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 15 }}
+                transition={{ duration: 0.3 }}
+                className="backdrop-blur-3xl bg-white/90 border border-white rounded-[2.5rem] p-8 shadow-2xl max-w-lg w-full flex flex-col gap-6 max-h-[90vh] overflow-y-auto"
+              >
+                <div className="flex flex-col select-none">
+                  <span className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.3em] mb-1">
+                    Galerie Media
+                  </span>
+                  <h3 className="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-none">
+                    Ajouter une photo
+                  </h3>
+                </div>
+
+                <form
+                  onSubmit={handleAddGalleryPhoto}
+                  className="flex flex-col gap-5"
+                >
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
+                      Titre de la photo
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Podium Championnats"
+                      value={newGalleryPhotoTitle}
+                      onChange={(e) => setNewGalleryPhotoTitle(e.target.value)}
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-slate-900 focus:outline-none transition-all duration-300 text-sm text-slate-900 placeholder-slate-300 font-bold"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
+                      Date de l&apos;événement
+                    </label>
+                    <input
+                      type="date"
+                      value={newGalleryPhotoDate}
+                      onChange={(e) => setNewGalleryPhotoDate(e.target.value)}
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-slate-900 focus:outline-none transition-all duration-300 text-sm text-slate-900 font-bold"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
+                      Sélectionner l&apos;image
+                    </label>
+                    <div className="relative">
+                      <input 
+                        type="file" 
+                        id="gallery-photo-upload-modal"
+                        accept="image/*"
+                        onChange={(e) => setNewGalleryPhotoFile(e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                      <label 
+                        htmlFor="gallery-photo-upload-modal"
+                        className="w-full relative bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl hover:border-slate-400 cursor-pointer flex flex-col items-center justify-center min-h-[200px] transition-all overflow-hidden"
+                      >
+                        {previewUrl ? (
+                          <div className="flex flex-col items-center justify-center w-full p-2">
+                            <img 
+                              src={previewUrl} 
+                              alt="Preview" 
+                              className="max-w-full max-h-[350px] object-contain rounded-2xl shadow-md"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <span className="text-white text-[10px] font-black uppercase tracking-widest bg-black/60 px-4 py-2 rounded-full backdrop-blur-md border border-white/20">Changer l&apos;image</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center gap-3 p-10">
+                            <Camera size={40} className="text-slate-300" />
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Choisir un fichier</span>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-4 mt-4 pt-6 border-t border-slate-100">
+                    <button
+                      type="submit"
+                      disabled={isUploading || !newGalleryPhotoFile}
+                      className={`w-full py-5 font-black text-xs tracking-[0.2em] uppercase rounded-2xl shadow-xl transition-all duration-300 flex items-center justify-center gap-3 ${isUploading || !newGalleryPhotoFile ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-black text-white shadow-slate-900/20"}`}
+                    >
+                      {isUploading ? "🚀 Envoi en cours..." : "🚀 Ajouter à ma galerie"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddPhotoModal(false)}
+                      className="w-full py-4 bg-white border border-slate-200 text-slate-500 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Photo Details Modal */}
+        <AnimatePresence>
+          {selectedPhoto && (
+            <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[160] flex items-center justify-center p-4 select-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-auto"
+              >
+                {/* Photo Section */}
+                <div className="flex-1 bg-black flex items-center justify-center overflow-hidden">
+                  <img src={selectedPhoto.url} alt={selectedPhoto.title} className="max-w-full max-h-full object-contain" />
+                </div>
+
+                {/* Edit Section */}
+                <div className="w-full md:w-80 p-8 flex flex-col gap-6 bg-slate-50 border-l border-slate-100">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.3em] mb-1">Détails Photo</span>
+                    <h4 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none">Modifier</h4>
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-black uppercase text-slate-400 px-1">Titre</label>
+                      <input 
+                        type="text" 
+                        defaultValue={selectedPhoto.title}
+                        id="edit-photo-title"
+                        className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-sm"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-black uppercase text-slate-400 px-1">Date</label>
+                      <input 
+                        type="date" 
+                        defaultValue={selectedPhoto.date}
+                        id="edit-photo-date"
+                        className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 mt-auto">
+                    <button 
+                      onClick={() => {
+                        const title = (document.getElementById('edit-photo-title') as HTMLInputElement).value;
+                        const date = (document.getElementById('edit-photo-date') as HTMLInputElement).value;
+                        handleUpdateGalleryPhoto(selectedPhoto.id, title, date);
+                      }}
+                      className="w-full py-4 bg-slate-900 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-black transition-all shadow-lg"
+                    >
+                      Enregistrer
+                    </button>
+                    <button 
+                      onClick={() => handleRemoveGalleryPhoto(selectedPhoto.id)}
+                      className="w-full py-3 bg-red-50 text-red-500 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-red-100 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Trash2 size={14} /> Supprimer
+                    </button>
+                    <button 
+                      onClick={() => setSelectedPhoto(null)}
+                      className="w-full py-3 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-all"
+                    >
+                      Fermer
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
         {/* Profile and Identity Edit Modal */}
         {/* Profile and Identity Edit Modal */}
         <AnimatePresence>
@@ -1843,6 +2079,19 @@ export default function DashboardPage() {
                             <Share2 size={18} className="text-slate-600" />
                           </span>
                           <span className="text-sm font-bold text-slate-900">Mes Liens & Réseaux</span>
+                        </div>
+                        <ChevronRight size={18} className="text-slate-300" />
+                      </button>
+
+                      <button 
+                        onClick={() => setProfileView('photos')}
+                        className="w-full p-6 flex items-center justify-between hover:bg-slate-50 transition-all border-b border-slate-100"
+                      >
+                        <div className="flex items-center gap-4">
+                          <span className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
+                            <Camera size={18} className="text-slate-600" />
+                          </span>
+                          <span className="text-sm font-bold text-slate-900">Mes Photos</span>
                         </div>
                         <ChevronRight size={18} className="text-slate-300" />
                       </button>
@@ -2145,6 +2394,68 @@ export default function DashboardPage() {
                           </button>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {profileView === 'photos' && (
+                  <div className="flex flex-col gap-8 animate-slideInRight">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-emerald-600 font-black uppercase tracking-[0.3em] mb-2">Gestion</span>
+                      <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Galerie Photos</h3>
+                    </div>
+
+                    <div className="flex flex-col gap-6">
+                      {photoGallery.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 gap-6">
+                          <motion.button 
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setShowAddPhotoModal(true)}
+                            className="relative w-16 h-16 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-2xl overflow-hidden group"
+                          >
+                            <span className="text-3xl font-light">+</span>
+                            <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-[-25deg] translate-x-[-150%] group-active:translate-x-[150%] transition-transform duration-500 pointer-events-none"></div>
+                          </motion.button>
+                          <div className="text-center">
+                            <p className="text-slate-900 font-black text-sm uppercase tracking-widest">Aucune photo</p>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase mt-1">Appuyez sur + pour commencer</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-2 gap-4">
+                            {photoGallery.map((photo) => (
+                              <div 
+                                key={photo.id} 
+                                onClick={() => setSelectedPhoto(photo)}
+                                className="relative group bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm aspect-square cursor-pointer"
+                              >
+                                <img src={photo.url} alt={photo.title} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-end justify-start p-3">
+                                  <div className="bg-white/20 backdrop-blur-md p-2 rounded-xl border border-white/30 text-white">
+                                    <Eye size={16} />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            
+                            {/* Small add button in grid */}
+                            <motion.button 
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => setShowAddPhotoModal(true)}
+                              className={`relative aspect-square border-2 border-dashed rounded-3xl flex flex-col items-center justify-center gap-2 transition-all ${!isPremium && photoGallery.length >= 2 ? "bg-slate-50 border-slate-200 cursor-not-allowed opacity-50" : "bg-white border-slate-300 hover:border-slate-900 group overflow-hidden"}`}
+                            >
+                              <span className="text-2xl font-light text-slate-400">+</span>
+                              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Ajouter</span>
+                              {!isPremium && photoGallery.length >= 2 && <span className="absolute bottom-2 text-[7px] font-black text-slate-900 bg-slate-200 px-2 py-0.5 rounded-full">ELITE REQUIS</span>}
+                              
+                              <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-slate-900/10 to-transparent skew-x-[-25deg] translate-x-[-150%] group-active:translate-x-[150%] transition-transform duration-500 pointer-events-none"></div>
+                            </motion.button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
