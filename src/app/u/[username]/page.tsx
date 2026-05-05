@@ -1,19 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion, useScroll, useSpring, useTransform } from "framer-motion";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import {
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Area,
-  AreaChart,
-  ResponsiveContainer,
-} from "recharts";
+import { Custom3DChart } from "./CustomChart";
 
 interface Record {
   distance: string;
@@ -121,6 +113,93 @@ const staggerItem = {
   show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 100, damping: 20 } }
 };
 
+const HorizontalCarousel = ({ photos }: { photos: { id: string; url: string; title: string; date?: string }[] }) => {
+  const targetRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    // If photos fit within screen, no scroll needed, or calculate exactly how much to scroll
+    // Assuming each photo is ~80vw (max 800px) + gap
+    // We will let framer-motion interpolate up to a sensible value
+    const updateWidth = () => {
+      if (targetRef.current) {
+        // total width of the inner sliding content minus viewport width
+        // A rough estimate: 80vw per photo, gap 32px
+        const viewportWidth = window.innerWidth;
+        const cardWidth = Math.min(viewportWidth * 0.8, 800) + 32;
+        const totalContentWidth = photos.length * cardWidth;
+        // only translate enough to see the last item
+        const maxScroll = Math.max(0, totalContentWidth - viewportWidth);
+        setContainerWidth(maxScroll);
+      }
+    };
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, [photos]);
+
+  const { scrollYProgress } = useScroll({
+    target: targetRef,
+  });
+
+  // we use a custom spring to make it smoother
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 100, damping: 20 });
+  const x = useTransform(smoothProgress, [0, 1], [0, -containerWidth]);
+
+  // Adjust section height based on number of photos.
+  // E.g. 1 photo = 100vh (no scroll), 20 photos = maybe 500vh to give enough scroll time
+  const sectionHeight = `${100 + photos.length * 20}vh`;
+
+  return (
+    <section ref={targetRef} className="relative w-full" style={{ height: sectionHeight }}>
+      <div className="sticky top-0 flex h-screen items-center overflow-hidden w-full">
+        <motion.div style={{ x }} className="flex gap-8 px-4 md:px-8">
+          {photos.map((photo, index) => {
+            return (
+              <div
+                key={photo.id || index}
+                className="group relative h-[60vh] w-[80vw] max-w-[800px] flex-shrink-0 overflow-hidden rounded-3xl bg-slate-900 border border-slate-700/50 shadow-2xl [perspective:1000px]"
+              >
+                <motion.div
+                  className="absolute inset-0 w-full h-full"
+                  whileHover={{ rotateY: 5, rotateX: -5, scale: 1.05 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  style={{ transformStyle: "preserve-3d" }}
+                >
+                  <img
+                    src={photo.url}
+                    alt={photo.title}
+                    className="h-full w-full object-contain bg-black pointer-events-none"
+                    loading="lazy"
+                    onError={(e) => e.currentTarget.src = 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=400&q=80'}
+                  />
+                  {/* Gradient Overlay for Text */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+
+                  {/* Text Details */}
+                  <div
+                    className="absolute bottom-0 left-0 p-6 md:p-10 w-full transform-gpu transition-all duration-300 group-hover:-translate-y-2 [transform:translateZ(50px)]"
+                  >
+                    <h3 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tight shadow-black/50 drop-shadow-md">
+                      {photo.title}
+                    </h3>
+                    {photo.date && (
+                      <p className="text-emerald-400 font-bold text-sm md:text-base mt-2 tracking-widest uppercase drop-shadow-md">
+                        {photo.date}
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+            );
+          })}
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
+
 export default function PublicAthleteProfile() {
   const params = useParams();
   const username = params?.username as string;
@@ -129,7 +208,7 @@ export default function PublicAthleteProfile() {
   const [profileNotFound, setProfileNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const [profileData, setProfileData] = useState<{ full_name?: string; bio?: string; avatar_url?: string; photos?: { id: string; url: string; title: string }[] }>({});
+  const [profileData, setProfileData] = useState<{ full_name?: string; bio?: string; avatar_url?: string; photos?: { id: string; url: string; title: string; date?: string }[] }>({});
   const [records, setRecords] = useState<Record[]>([]);
   const [links, setLinks] = useState<SocialLink[]>([]);
   const [evolution, setEvolution] = useState<EvolutionPoint[]>([]);
@@ -426,36 +505,9 @@ export default function PublicAthleteProfile() {
           </motion.div>
 
           {galleryPhotos.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true, margin: "-10%" }}
-              className="w-full select-none"
-            >
-              <div className="w-full flex items-center gap-4 overflow-x-auto pb-4 pt-2 snap-x select-none scrollbar-none">
-                {galleryPhotos.map((photo, i) => (
-                  <motion.div
-                    key={i}
-                    whileHover={{ scale: 1.03 }}
-                    className="w-[200px] flex-shrink-0 snap-center backdrop-blur-xl bg-white border border-slate-300 rounded-2xl overflow-hidden select-none"
-                  >
-                    <img
-                      src={photo.url}
-                      alt={photo.title}
-                      width={200}
-                      height={112}
-                      className="w-full h-28 object-cover select-none pointer-events-none"
-                      loading="lazy"
-                      onError={(e) => e.currentTarget.src = 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=400&q=80'}
-                    />
-                    <div className="p-3 text-[11px] font-bold text-slate-500 text-center uppercase tracking-wide">
-                      {photo.title}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
+            <div className="w-full relative z-20">
+              <HorizontalCarousel photos={galleryPhotos} />
+            </div>
           )}
 
           {videos.length > 0 && (
@@ -569,54 +621,10 @@ export default function PublicAthleteProfile() {
                 </div>
               </motion.div>
 
-              {/* CHART */}
-              <motion.div
-                key={`chart-${selectedDiscipline}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.1, duration: 0.5 }}
-                className="w-full h-[200px] mt-2 relative"
-              >
-                {mounted && (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={processedPerformances[selectedDiscipline].records.map(r => ({
-                        ...r,
-                        tempsVal: parseFloat(r.temps.toString())
-                      }))}
-                    >
-                      <Tooltip
-                        contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '16px', padding: '12px' }}
-                        labelStyle={{ color: '#64748b', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}
-                        itemStyle={{ color: '#f8fafc', fontSize: 16, fontWeight: '900' }}
-                        formatter={(value) => [`${value}s`, 'Chrono']}
-                        labelFormatter={(label) => new Date(label).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="tempsVal"
-                        stroke="#94a3b8"
-                        strokeWidth={2}
-                        fillOpacity={1}
-                        fill="url(#glow-gradient)"
-                        activeDot={{ r: 6, fill: '#f8fafc', stroke: '#0f172a', strokeWidth: 3 }}
-                        dot={false}
-                        isAnimationActive={true}
-                      />
-                      <defs>
-                        <linearGradient id="glow-gradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.1} />
-                          <stop offset="100%" stopColor="#94a3b8" stopOpacity={0.0} />
-                        </linearGradient>
-                        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                          <feGaussianBlur stdDeviation="4" result="blur" />
-                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                        </filter>
-                      </defs>
-                    </AreaChart>
-                  </ResponsiveContainer>
-                )}
-              </motion.div>
+              {/* CUSTOM 3D CHART */}
+              {mounted && processedPerformances[selectedDiscipline].records.length > 0 && (
+                <Custom3DChart records={processedPerformances[selectedDiscipline].records} />
+              )}
             </motion.div>
           )}
 
