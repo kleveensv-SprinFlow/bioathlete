@@ -303,9 +303,9 @@ export default function PublicAthleteProfile() {
 
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500 selection:text-black">
-      <div className="fixed top-[-15%] left-[-15%] w-[600px] h-[600px] bg-emerald-500/15 rounded-full blur-[140px] pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-15%] right-[-15%] w-[600px] h-[600px] bg-blue-500/15 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div className="min-h-screen bg-slate-200 text-slate-900 font-sans selection:bg-emerald-500 selection:text-white">
+      <div className="fixed top-[-10%] left-[-10%] w-[600px] h-[600px] bg-white/60 rounded-full blur-[120px] pointer-events-none z-0"></div>
+      <div className="fixed bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-slate-300/50 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
       <div className="relative z-10 flex flex-col items-center min-h-screen w-full max-w-4xl mx-auto px-4 md:px-8">
 
@@ -327,14 +327,14 @@ export default function PublicAthleteProfile() {
           <img
             src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png"
             alt="BioAthlete Logo"
-            className="h-8 object-contain brightness-0 invert drop-shadow-md"
+            className="h-8 object-contain brightness-0 opacity-80"
           />
         </div>
 
         {/* HERO SECTION */}
         <motion.div
           variants={staggerItem}
-          className="relative w-full h-[500px] md:h-[600px] overflow-hidden rounded-b-3xl md:rounded-3xl shadow-2xl group"
+          className="relative w-full h-[500px] md:h-[600px] overflow-hidden rounded-b-3xl md:rounded-3xl border border-slate-300 group"
         >
           <motion.div style={{ y: headerY }} className="absolute inset-0 w-full h-[120%] -top-[10%]">
             {profileData.avatar_url ? (
@@ -348,28 +348,28 @@ export default function PublicAthleteProfile() {
                 }}
               />
             ) : null}
-            <div className={`w-full h-full bg-gradient-to-b from-black via-[#111111] to-[#000000] flex flex-col items-center justify-center relative select-none ${profileData.avatar_url ? 'hidden' : ''}`}>
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#00FF88]/20 via-black to-black opacity-60"></div>
-              <div className="font-black text-8xl md:text-[120px] tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-[#00FF88]/50 select-none z-10 drop-shadow-[0_0_30px_rgba(0,255,136,0.3)]">
+            <div className={`w-full h-full bg-slate-200 flex flex-col items-center justify-center relative select-none ${profileData.avatar_url ? 'hidden' : ''}`}>
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/40 via-slate-200 to-slate-300 opacity-60"></div>
+              <div className="font-black text-8xl md:text-[120px] tracking-tighter text-slate-400 select-none z-10">
                 {username?.slice(0, 2).toUpperCase() || "BA"}
               </div>
             </div>
             {/* Gradient Overlay for Text Readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/40 to-transparent"></div>
           </motion.div>
 
           {/* Glassmorphism Info Overlay */}
           <div className="absolute bottom-0 left-0 w-full p-6 md:p-10 flex flex-col gap-2">
             <div className="flex flex-col gap-1 select-none">
-              <h1 className="text-4xl md:text-6xl font-black tracking-tight text-white drop-shadow-md uppercase">
+              <h1 className="text-4xl md:text-6xl font-black tracking-tight text-slate-900 uppercase">
                 {(profileData.full_name || username).toUpperCase()}
               </h1>
-              <p className="text-[#00FF88] text-sm md:text-base font-extrabold uppercase tracking-widest select-none drop-shadow-[0_0_8px_rgba(0,255,136,0.5)]">
-                Athlète
+              <p className="text-slate-400 text-xs md:text-sm font-bold uppercase tracking-[0.3em] select-none">
+                Athlète de haut niveau
               </p>
             </div>
-            <p className="text-gray-300 text-sm md:text-base max-w-2xl leading-relaxed select-none backdrop-blur-md bg-black/20 p-4 rounded-xl border border-white/10 mt-2">
-              {profileData.bio || "Athlète passionné visant l'excellence sur les pistes nationales et internationales."}
+            <p className="text-slate-600 text-sm md:text-base max-w-2xl leading-relaxed select-none backdrop-blur-xl bg-white p-4 rounded-2xl border border-slate-300 mt-2">
+              {profileData.bio || "Visant l'excellence à chaque foulée, repoussant les limites de la performance athlétique."}
             </p>
 
             {links.length > 0 && (
@@ -380,7 +380,7 @@ export default function PublicAthleteProfile() {
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center text-lg hover:bg-white/20 hover:border-[#00FF88]/50 hover:text-[#00FF88] transition-all duration-300 shadow-lg"
+                    className="w-10 h-10 rounded-full bg-white backdrop-blur-xl border border-slate-300 flex items-center justify-center text-lg hover:bg-slate-100 hover:border-slate-400 hover:text-slate-900 transition-all duration-300"
                     title={link.title}
                   >
                     {link.icon || "🔗"}
@@ -400,29 +400,28 @@ export default function PublicAthleteProfile() {
           viewport={{ once: true, margin: "-10%" }}
           className="w-full flex flex-col gap-6 select-none"
         >
-          <h3 className="text-sm font-black uppercase tracking-widest text-white px-2">
-            Partenaires <span className="text-[#00FF88]">&</span> Sponsors
+          <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 px-2">
+            Partenaires <span className="text-white">&</span> Sponsors
           </h3>
 
           {(equipementiers.length === 0 && partenaires.length === 0) ? (
-            <div className="w-full backdrop-blur-xl bg-gradient-to-br from-white/5 to-[#00FF88]/5 border border-[#00FF88]/30 rounded-3xl p-8 flex flex-col items-center justify-center text-center shadow-[0_0_30px_rgba(0,255,136,0.1)]">
-              <span className="text-4xl mb-4">🤝</span>
-              <h4 className="text-white font-black text-lg tracking-wide uppercase mb-2">Espace Sponsoring Disponible</h4>
-              <p className="text-gray-400 text-sm max-w-sm">Associez votre marque à l'excellence et soutenez la progression de cet athlète vers les sommets.</p>
+            <div className="w-full backdrop-blur-xl bg-white border border-slate-300 rounded-3xl p-8 flex flex-col items-center justify-center text-center">
+              <span className="text-4xl mb-4 grayscale opacity-40">🤝</span>
+              <h4 className="text-slate-800 font-black text-lg tracking-wide uppercase mb-2">Espace Sponsoring</h4>
+              <p className="text-slate-500 text-sm max-w-sm">Associez votre marque à l'excellence et soutenez la progression de cet athlète.</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
               {equipementiers.map((eq, idx) => (
-                <div key={`eq-${idx}`} className="col-span-2 backdrop-blur-xl bg-white/5 border border-[#00FF88]/30 hover:bg-white/10 hover:border-[#00FF88]/60 transition-all duration-300 rounded-3xl p-6 md:p-8 flex items-center justify-center relative overflow-hidden group">
-                  <div className="absolute top-4 left-4 text-[9px] font-black uppercase tracking-widest text-[#00FF88] opacity-70 group-hover:opacity-100 transition-opacity">Équipementier Officiel</div>
-                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#00FF88]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  <span className="text-5xl md:text-6xl drop-shadow-lg scale-100 group-hover:scale-110 transition-transform duration-500">{eq.logo}</span>
+                <div key={`eq-${idx}`} className="col-span-2 backdrop-blur-xl bg-white border border-slate-300 hover:border-slate-400 transition-all duration-300 rounded-3xl p-6 md:p-10 flex items-center justify-center relative overflow-hidden group">
+                  <div className="absolute top-4 left-4 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 opacity-60 group-hover:opacity-100 transition-opacity">Équipementier Officiel</div>
+                  <span className="text-5xl md:text-6xl grayscale group-hover:grayscale-0 transition-all duration-500">{eq.logo}</span>
                 </div>
               ))}
 
               {partenaires.map((sp, idx) => (
-                <div key={`sp-${idx}`} className="col-span-1 backdrop-blur-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/30 transition-all duration-300 rounded-3xl p-6 flex items-center justify-center relative group">
-                  <span className="text-3xl md:text-4xl drop-shadow-md scale-100 group-hover:scale-110 transition-transform duration-300">{sp.logo}</span>
+                <div key={`sp-${idx}`} className="col-span-1 backdrop-blur-xl bg-white border border-slate-300 hover:border-slate-400 transition-all duration-300 rounded-3xl p-6 flex items-center justify-center relative group">
+                  <span className="text-3xl md:text-4xl grayscale group-hover:grayscale-0 transition-all duration-300">{sp.logo}</span>
                 </div>
               ))}
             </div>
@@ -442,7 +441,7 @@ export default function PublicAthleteProfile() {
                 <motion.div
                   key={i}
                   whileHover={{ scale: 1.03 }}
-                  className="w-[200px] flex-shrink-0 snap-center backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-lg select-none"
+                  className="w-[200px] flex-shrink-0 snap-center backdrop-blur-xl bg-white border border-slate-300 rounded-2xl overflow-hidden select-none"
                 >
                   <img
                     src={photo.url}
@@ -453,7 +452,7 @@ export default function PublicAthleteProfile() {
                     loading="lazy"
                     onError={(e) => e.currentTarget.src = 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=400&q=80'}
                   />
-                  <div className="p-3 text-[11px] font-bold text-gray-300 text-center uppercase tracking-wide">
+                  <div className="p-3 text-[11px] font-bold text-slate-500 text-center uppercase tracking-wide">
                     {photo.title}
                   </div>
                 </motion.div>
@@ -470,22 +469,22 @@ export default function PublicAthleteProfile() {
             viewport={{ once: true, margin: "-10%" }}
             className="w-full select-none flex flex-col gap-3"
           >
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#00FF88] px-1">
-              Vidéos Présentation
+            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 px-1">
+              Vidéos <span className="text-slate-600">&</span> Médias
             </h3>
             <div className="flex flex-col gap-4">
               {videos.map((vid, idx) => (
                 <motion.div
                   key={idx}
                   whileHover={{ scale: 1.02 }}
-                  className="w-full backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-3 shadow-xl hover:border-emerald-500/20 transition-all duration-300 select-none overflow-hidden"
+                  className="w-full backdrop-blur-xl bg-white border border-slate-300 rounded-2xl p-3 hover:border-slate-400 transition-all duration-300 select-none overflow-hidden"
                 >
                   {vid.title && (
-                    <p className="text-xs font-bold uppercase tracking-wider text-white mb-2 truncate px-1">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-2 truncate px-1">
                       {vid.title}
                     </p>
                   )}
-                  <div className="w-full rounded-xl border border-white/10 overflow-hidden bg-black flex items-center justify-center">
+                  <div className="w-full rounded-xl border border-slate-200 overflow-hidden bg-slate-100 flex items-center justify-center">
                     {vid.url.includes("youtube.com") || vid.url.includes("youtu.be") || vid.url.includes("vimeo") ? (
                       <iframe
                         src={formatEmbedUrl(vid.url)}
@@ -526,10 +525,10 @@ export default function PublicAthleteProfile() {
                   <button
                     key={disc}
                     onClick={() => setSelectedDiscipline(disc)}
-                    className={`snap-center px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all duration-300 ${
+                    className={`snap-center px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap transition-all duration-500 ${
                       selectedDiscipline === disc
-                        ? "bg-[#00FF88]/10 text-[#00FF88] border border-[#00FF88]/30 shadow-[0_0_15px_rgba(0,255,136,0.15)]"
-                        : "bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10"
+                        ? "bg-slate-900 text-white scale-105"
+                        : "bg-white text-slate-500 border border-slate-300 hover:bg-slate-50 hover:text-slate-900"
                     }`}
                   >
                     {disc}
@@ -544,31 +543,31 @@ export default function PublicAthleteProfile() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl"
+              className="backdrop-blur-xl bg-white border border-slate-300 rounded-3xl p-6 md:p-8 flex flex-col items-center justify-center relative overflow-hidden"
             >
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00FF88] to-transparent opacity-50"></div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent"></div>
 
-              <div className="text-[#00FF88] font-black text-xs tracking-widest uppercase mb-2">Record Personnel</div>
+              <div className="text-slate-400 font-black text-[10px] tracking-[0.3em] uppercase mb-4">Record Personnel</div>
 
-              <div className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 tracking-tighter drop-shadow-md">
+              <div className="text-6xl md:text-8xl font-black text-slate-900 tracking-tighter">
                 {processedPerformances[selectedDiscipline].bestRecord.temps}
-                <span className="text-2xl md:text-3xl text-gray-500">s</span>
+                <span className="text-2xl md:text-3xl text-slate-400 ml-1">s</span>
               </div>
 
-              <div className="mt-4 flex flex-col items-center gap-1 text-center">
-                <div className="flex items-center gap-2 bg-[#00FF88]/10 border border-[#00FF88]/20 px-3 py-1 rounded-full">
-                  <span className="w-2 h-2 rounded-full bg-[#00FF88] animate-pulse"></span>
-                  <span className="text-[#00FF88] text-[10px] font-bold tracking-widest">
+              <div className="mt-8 flex flex-col items-center gap-1 text-center">
+                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                  <span className="text-emerald-500 text-[10px] font-black tracking-[0.2em] uppercase">
                     {processedPerformances[selectedDiscipline].improvementPercentage} D'ÉVOLUTION
                   </span>
                 </div>
 
                 {processedPerformances[selectedDiscipline].bestRecord.competition && (
-                  <div className="text-gray-400 text-xs font-medium uppercase tracking-wider mt-2">
+                  <div className="text-slate-400 text-xs font-medium uppercase tracking-wider mt-2">
                     {processedPerformances[selectedDiscipline].bestRecord.competition}
                   </div>
                 )}
-                <div className="text-gray-500 text-[10px] mt-1">
+                <div className="text-slate-500 text-[10px] mt-1">
                   {new Date(processedPerformances[selectedDiscipline].bestRecord.date).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' })}
                 </div>
               </div>
@@ -591,27 +590,27 @@ export default function PublicAthleteProfile() {
                     }))}
                   >
                     <Tooltip 
-                      contentStyle={{ background: '#0a0a0a', border: '1px solid #1f1f1f', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
-                      labelStyle={{ color: '#888888', fontSize: 10, textTransform: 'uppercase', marginBottom: '4px' }}
-                      itemStyle={{ color: '#00FF88', fontSize: 14, fontWeight: '900' }}
+                      contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '16px', padding: '12px' }}
+                      labelStyle={{ color: '#64748b', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}
+                      itemStyle={{ color: '#f8fafc', fontSize: 16, fontWeight: '900' }}
                       formatter={(value) => [`${value}s`, 'Chrono']}
                       labelFormatter={(label) => new Date(label).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}
                     />
                     <Area
                       type="monotone"
                       dataKey="tempsVal"
-                      stroke="#00FF88"
-                      strokeWidth={3}
+                      stroke="#94a3b8"
+                      strokeWidth={2}
                       fillOpacity={1}
                       fill="url(#glow-gradient)"
-                      activeDot={{ r: 6, fill: '#00FF88', stroke: '#000000', strokeWidth: 3 }}
-                      dot={processedPerformances[selectedDiscipline].records.length === 1 ? { r: 6, fill: '#00FF88', stroke: '#000000', strokeWidth: 3 } : false}
+                      activeDot={{ r: 6, fill: '#f8fafc', stroke: '#0f172a', strokeWidth: 3 }}
+                      dot={false}
                       isAnimationActive={true}
                     />
                     <defs>
                       <linearGradient id="glow-gradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#00FF88" stopOpacity={0.2} />
-                        <stop offset="100%" stopColor="#00FF88" stopOpacity={0.0} />
+                        <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.1} />
+                        <stop offset="100%" stopColor="#94a3b8" stopOpacity={0.0} />
                       </linearGradient>
                       <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
                         <feGaussianBlur stdDeviation="4" result="blur" />
