@@ -307,66 +307,15 @@ export default function PublicAthleteProfile() {
       <div className="fixed top-[-15%] left-[-15%] w-[600px] h-[600px] bg-emerald-500/15 rounded-full blur-[140px] pointer-events-none z-0"></div>
       <div className="fixed bottom-[-15%] right-[-15%] w-[600px] h-[600px] bg-blue-500/15 rounded-full blur-[140px] pointer-events-none z-0"></div>
 
-      <div className="relative z-10 flex flex-col md:flex-row min-h-screen w-full max-w-[1400px] mx-auto">
-        {/* COLONNE DE GAUCHE */}
-        <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="hidden md:flex w-full md:w-1/3 md:sticky md:top-0 md:h-screen flex-col justify-between p-8 md:p-12 border-b md:border-b-0 md:border-r border-white/5 bg-black/40 backdrop-blur-md z-20"
-        >
-          {/* Haut : Logo */}
-          <div className="w-full flex justify-center md:justify-start select-none">
-            <img
-              src="/logo.png"
-              alt="BioAthlete Logo"
-              className="h-16 md:h-20 object-contain brightness-0 invert"
-            />
-          </div>
+      <div className="relative z-10 flex flex-col items-center min-h-screen w-full max-w-4xl mx-auto px-4 md:px-8">
 
-          {/* Centre : Navigation */}
-          <nav className="flex flex-col gap-6 my-10 md:my-0 select-none items-center md:items-start">
-            <a href="#performances" className="text-gray-400 hover:text-white font-black text-sm uppercase tracking-widest transition-colors flex items-center gap-3 group">
-              <span className="hidden md:block w-8 h-[1px] bg-gray-600 group-hover:bg-[#00FF88] group-hover:w-12 transition-all duration-300"></span>
-              Performances
-            </a>
-            <a href="#sponsors" className="text-gray-400 hover:text-white font-black text-sm uppercase tracking-widest transition-colors flex items-center gap-3 group">
-              <span className="hidden md:block w-8 h-[1px] bg-gray-600 group-hover:bg-[#00FF88] group-hover:w-12 transition-all duration-300"></span>
-              Sponsors
-            </a>
-            <a href="#medias" className="text-gray-400 hover:text-white font-black text-sm uppercase tracking-widest transition-colors flex items-center gap-3 group">
-              <span className="hidden md:block w-8 h-[1px] bg-gray-600 group-hover:bg-[#00FF88] group-hover:w-12 transition-all duration-300"></span>
-              Médias
-            </a>
-          </nav>
 
-          {/* Bas : Réseaux & Sources */}
-          <div className="flex items-center justify-center md:justify-start gap-4 flex-wrap select-none">
-            {links.length > 0 ? (
-              links.map((link, idx) => (
-                <a
-                  key={idx}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-lg hover:bg-white/10 hover:border-emerald-500/30 hover:text-emerald-400 transition-all duration-300 shadow-lg"
-                  title={link.title}
-                >
-                  {link.icon || "🔗"}
-                </a>
-              ))
-            ) : (
-              <span className="text-xs text-gray-600 uppercase tracking-wider">Aucun réseau</span>
-            )}
-          </div>
-        </motion.div>
-
-        {/* COLONNE DE DROITE */}
+        {/* CONTENU PRINCIPAL */}
         <motion.div
           variants={staggerContainer}
           initial="hidden"
           animate="show"
-          className="w-full md:w-2/3 flex flex-col gap-12 pb-24 select-none"
+          className="w-full flex flex-col gap-16 pb-32 pt-8 select-none"
         >
 
 
@@ -374,7 +323,7 @@ export default function PublicAthleteProfile() {
 
 
         {/* MOBILE TOP LEFT LOGO */}
-        <div className="md:hidden absolute top-6 left-6 z-50 pointer-events-none">
+        <div className="absolute top-6 left-6 z-50 pointer-events-none">
           <img
             src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png"
             alt="BioAthlete Logo"
@@ -422,60 +371,72 @@ export default function PublicAthleteProfile() {
             <p className="text-gray-300 text-sm md:text-base max-w-2xl leading-relaxed select-none backdrop-blur-md bg-black/20 p-4 rounded-xl border border-white/10 mt-2">
               {profileData.bio || "Athlète passionné visant l'excellence sur les pistes nationales et internationales."}
             </p>
+
+            {links.length > 0 && (
+              <div className="flex gap-3 mt-4">
+                {links.map((link, idx) => (
+                  <a
+                    key={idx}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center text-lg hover:bg-white/20 hover:border-[#00FF88]/50 hover:text-[#00FF88] transition-all duration-300 shadow-lg"
+                    title={link.title}
+                  >
+                    {link.icon || "🔗"}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         </motion.div>
 
 
-        <div id="sponsors" className="w-full"></div>
-        {equipementiers.length > 0 && (
-          <motion.div variants={staggerItem} className="w-full select-none text-center flex flex-col items-center">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#00FF88] mb-2 select-none">
-              Équipementier Officiel
-            </h3>
-            {equipementiers.map((eq, idx) => (
-              <motion.div
-                key={idx}
-                whileHover={{ scale: 1.05 }}
-                className="backdrop-blur-xl bg-white/5 border border-white/10 border-emerald-500/30 rounded-2xl px-6 py-4 flex items-center gap-3 shadow-xl select-none text-sm font-black tracking-wider uppercase"
-              >
-                <span className="text-2xl">{eq.logo}</span>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
+                {/* BENTO GRID SPONSORS */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true, margin: "-10%" }}
+          className="w-full flex flex-col gap-6 select-none"
+        >
+          <h3 className="text-sm font-black uppercase tracking-widest text-white px-2">
+            Partenaires <span className="text-[#00FF88]">&</span> Sponsors
+          </h3>
 
-        {equipementiers.length === 0 && partenaires.length === 0 && (
-          <motion.div variants={staggerItem} className="w-full select-none">
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="w-full mt-2 select-none text-center flex flex-col items-center backdrop-blur-xl bg-gradient-to-r from-emerald-500/5 to-blue-500/5 border border-dashed border-emerald-500/30 rounded-2xl px-6 py-5 shadow-lg"
-            >
-              <h3 className="text-xs font-black uppercase tracking-wider text-[#00FF88]/80 mb-1">
-                Espace Sponsoring Disponible
-              </h3>
-              <p className="text-[10px] text-gray-500 font-medium">Soutenez cet athlète dans sa progression</p>
-            </motion.div>
-          </motion.div>
-        )}
+          {(equipementiers.length === 0 && partenaires.length === 0) ? (
+            <div className="w-full backdrop-blur-xl bg-gradient-to-br from-white/5 to-[#00FF88]/5 border border-[#00FF88]/30 rounded-3xl p-8 flex flex-col items-center justify-center text-center shadow-[0_0_30px_rgba(0,255,136,0.1)]">
+              <span className="text-4xl mb-4">🤝</span>
+              <h4 className="text-white font-black text-lg tracking-wide uppercase mb-2">Espace Sponsoring Disponible</h4>
+              <p className="text-gray-400 text-sm max-w-sm">Associez votre marque à l'excellence et soutenez la progression de cet athlète vers les sommets.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              {equipementiers.map((eq, idx) => (
+                <div key={`eq-${idx}`} className="col-span-2 backdrop-blur-xl bg-white/5 border border-[#00FF88]/30 hover:bg-white/10 hover:border-[#00FF88]/60 transition-all duration-300 rounded-3xl p-6 md:p-8 flex items-center justify-center relative overflow-hidden group">
+                  <div className="absolute top-4 left-4 text-[9px] font-black uppercase tracking-widest text-[#00FF88] opacity-70 group-hover:opacity-100 transition-opacity">Équipementier Officiel</div>
+                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#00FF88]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <span className="text-5xl md:text-6xl drop-shadow-lg scale-100 group-hover:scale-110 transition-transform duration-500">{eq.logo}</span>
+                </div>
+              ))}
 
-        {partenaires.length > 0 && (
-          <motion.div variants={staggerItem} className="w-full flex flex-wrap items-center justify-center gap-3 select-none">
-            {partenaires.map((sp, idx) => (
-              <motion.div
-                key={idx}
-                whileHover={{ scale: 1.1, y: -3 }}
-                whileTap={{ scale: 0.95 }}
-                className="backdrop-blur-xl bg-white/5 border border-white/10 hover:border-emerald-500/30 rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg select-none text-xs font-bold hover:shadow-[0_0_15px_rgba(0,255,136,0.25)] transition-all duration-300"
-              >
-                <span>{sp.logo}</span>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
+              {partenaires.map((sp, idx) => (
+                <div key={`sp-${idx}`} className="col-span-1 backdrop-blur-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/30 transition-all duration-300 rounded-3xl p-6 flex items-center justify-center relative group">
+                  <span className="text-3xl md:text-4xl drop-shadow-md scale-100 group-hover:scale-110 transition-transform duration-300">{sp.logo}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
 
-        <div id="medias" className="w-full"></div>
         {galleryPhotos.length > 0 && (
-          <motion.div variants={staggerItem} className="w-full select-none">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true, margin: "-10%" }}
+            className="w-full select-none"
+          >
             <div className="w-full flex items-center gap-4 overflow-x-auto pb-4 pt-2 snap-x select-none scrollbar-none">
               {galleryPhotos.map((photo, i) => (
                 <motion.div
@@ -502,7 +463,13 @@ export default function PublicAthleteProfile() {
         )}
 
         {videos.length > 0 && (
-          <motion.div variants={staggerItem} className="w-full select-none flex flex-col gap-3">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true, margin: "-10%" }}
+            className="w-full select-none flex flex-col gap-3"
+          >
             <h3 className="text-xs font-black uppercase tracking-wider text-[#00FF88] px-1">
               Vidéos Présentation
             </h3>
@@ -544,9 +511,14 @@ export default function PublicAthleteProfile() {
           </motion.div>
         )}
 
-        <div id="performances" className="w-full"></div>
         {Object.keys(processedPerformances).length > 0 && selectedDiscipline && processedPerformances[selectedDiscipline] && (
-          <motion.div variants={staggerItem} className="w-full flex flex-col gap-6 select-none">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true, margin: "-10%" }}
+            className="w-full flex flex-col gap-6 select-none"
+          >
             {/* TABS FOR DISCIPLINES */}
             <div className="w-full overflow-x-auto pb-2 scrollbar-none snap-x">
               <div className="flex gap-2">
@@ -653,36 +625,7 @@ export default function PublicAthleteProfile() {
           </motion.div>
         )}
 
-        {links.length > 0 && (
-          <motion.div variants={staggerItem} className="flex flex-col gap-3 w-full select-none">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#00FF88] px-1">
-              Réseaux & Sources
-            </h3>
-            {links.map((link, idx) => (
-              <motion.a
-                key={idx}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.03, x: 2 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full flex items-center justify-between p-4 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-white/20 hover:shadow-[0_4px_24px_rgba(16,185,129,0.1)] transition-all duration-300 group select-none"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-black border border-white/5 group-hover:border-white/15 transition-colors text-xl">
-                    {link.icon}
-                  </div>
-                  <span className="font-extrabold text-sm text-gray-200 group-hover:text-white transition-colors">
-                    {link.title}
-                  </span>
-                </div>
-                <span className="text-gray-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300">
-                  ↗
-                </span>
-              </motion.a>
-            ))}
-          </motion.div>
-        )}
+
 
         <motion.div variants={staggerItem} className="w-full">
           <footer className="text-center mt-6 select-none">
@@ -692,37 +635,7 @@ export default function PublicAthleteProfile() {
           </footer>
         </motion.div>
 
-        {/* MOBILE NAVIGATION BAR (Bottom Sticky) */}
-        <div className="md:hidden fixed bottom-0 left-0 w-full z-50 p-4 select-none pb-safe">
-          <div className="w-full backdrop-blur-2xl bg-black/60 border border-white/10 rounded-2xl flex items-center justify-around p-3 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
-            <a href="#performances" className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#00FF88] transition-colors">
-              <span className="text-xl">⏱️</span>
-              <span className="text-[9px] font-black uppercase tracking-wider">Perfs</span>
-            </a>
-            <a href="#sponsors" className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#00FF88] transition-colors">
-              <span className="text-xl">🤝</span>
-              <span className="text-[9px] font-black uppercase tracking-wider">Sponsors</span>
-            </a>
-            <a href="#medias" className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#00FF88] transition-colors">
-              <span className="text-xl">📸</span>
-              <span className="text-[9px] font-black uppercase tracking-wider">Médias</span>
-            </a>
-            <div className="w-[1px] h-8 bg-white/10 mx-1"></div>
-            <div className="flex gap-2">
-              {links.slice(0, 2).map((link, idx) => (
-                <a
-                  key={idx}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm hover:bg-white/20 hover:text-[#00FF88] transition-colors"
-                >
-                  {link.icon || "🔗"}
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
+
 
       </motion.div>
       </div>
