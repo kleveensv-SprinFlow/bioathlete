@@ -216,7 +216,7 @@ export default function PublicAthleteProfile() {
           }}
           className={`w-full h-full object-cover contrast-110 brightness-110 transition-opacity duration-1000 ${isVideoLoaded ? 'opacity-50' : 'opacity-0'}`}
         >
-          <source src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/video/Stade.mp4" type="video/mp4" />
+          <source src="/Stade_scrub.mp4" type="video/mp4" />
         </video>
         {/* Darkening overlays for readability - softened to allow more video through */}
         <div className="absolute inset-0 bg-black/30" />
