@@ -246,7 +246,7 @@ export default function PublicAthleteProfile() {
             transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
             src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png" 
             alt="BioAthlete" 
-            className="h-20 md:h-28 object-contain logo-visibility-fix opacity-100" 
+            className="h-24 md:h-36 object-contain logo-visibility-fix opacity-100" 
             style={{ filter: 'brightness(0) invert(1)' }}
           />
         </div>
