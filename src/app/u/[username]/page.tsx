@@ -58,6 +58,7 @@ export default function PublicAthleteProfile() {
   const nameOpacity = useTransform(scrollY, [0, 300, 600], [1, 0.6, 0]);
   const videoY = useTransform(scrollY, [0, 3000], [0, -300]);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const { scrollYProgress } = useScroll();
 
   // Sync video playback with scroll (Apple-style cinematic scrubbing)
@@ -131,7 +132,18 @@ export default function PublicAthleteProfile() {
       } finally { setMounted(true); setLoading(false); }
     }
     fetchAthleteByUsername();
-  }, [username]);
+  }, [params.username]);
+
+  // Hack pour forcer iOS/Safari à précharger la première frame (Architecte Technique)
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.play().then(() => {
+        if (videoRef.current) videoRef.current.pause();
+      }).catch((e) => {
+        console.log("Lecture automatique bloquée par le navigateur (normal sur mobile sans interaction) : ", e);
+      });
+    }
+  }, []);
 
   // Helper to get high-quality logos for links
   const getLinkLogo = (url: string) => {
@@ -185,16 +197,24 @@ export default function PublicAthleteProfile() {
       <FloatingOrbs />
  
       {/* ═══ CINEMATIC VIDEO BACKGROUND ═══ */}
-      <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden">
+      <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden bg-black">
+        {!isVideoLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <div className="text-emerald-500/50 text-[10px] tracking-[0.4em] font-bold animate-pulse">
+              CHARGEMENT DU MÉDIA...
+            </div>
+          </div>
+        )}
         <video 
           ref={videoRef}
           muted 
           playsInline 
           preload="auto"
           onLoadedMetadata={(e) => {
+            setIsVideoLoaded(true);
             e.currentTarget.pause();
           }}
-          className="w-full h-full object-cover opacity-50 contrast-110 brightness-110"
+          className={`w-full h-full object-cover contrast-110 brightness-110 transition-opacity duration-1000 ${isVideoLoaded ? 'opacity-50' : 'opacity-0'}`}
         >
           <source src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/video/Stade.mp4" type="video/mp4" />
         </video>
