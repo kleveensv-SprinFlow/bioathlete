@@ -2330,7 +2330,7 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           onClick={() => { setModalMode('equipementier'); setShowEquipModal(true); }}
-                          className="w-full p-5 bg-slate-50 border-2 border-slate-200 rounded-[2rem] flex items-center justify-between hover:border-slate-900 hover:bg-white transition-all group"
+                          className={`w-full p-5 bg-slate-50 border-2 rounded-[2rem] flex items-center justify-between hover:bg-white transition-all group ${selectedEquip === "Autre" ? "border-emerald-500" : "border-slate-200 hover:border-slate-900"}`}
                         >
                           <div className="flex items-center gap-4">
                             {selectedEquip !== "Aucun" && selectedEquip !== "Autre" ? (
@@ -2351,10 +2351,32 @@ export default function DashboardPage() {
                               <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Équipementier Officiel</span>
                             </div>
                           </div>
-                          <div className="w-10 h-10 bg-white rounded-xl border border-slate-200 flex items-center justify-center group-hover:border-slate-900 transition-all">
-                            <span className="text-slate-900 text-lg">→</span>
+                          <div className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${selectedEquip === "Autre" ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white border-slate-200 text-slate-900 group-hover:border-slate-900"}`}>
+                            <span className="text-lg">{selectedEquip === "Autre" ? "✓" : "→"}</span>
                           </div>
                         </button>
+
+                        {selectedEquip === "Autre" && (
+                          <div className="flex flex-col gap-2 mt-2 animate-fadeIn">
+                            <input 
+                              type="text" 
+                              placeholder="Tapez le nom de la marque..." 
+                              value={customEquipName}
+                              onChange={(e) => setCustomEquipName(e.target.value)}
+                              onBlur={async () => {
+                                // Auto-save on blur
+                                if (!userId) return;
+                                const newSponsor = { id: 'main-equip', name: customEquipName || "Marque", logo: "🏢 " + (customEquipName || "Marque"), category: "Équipementier" };
+                                const otherSponsors = sponsors.filter(s => s.category !== "Équipementier");
+                                const updatedSponsors = [...otherSponsors, newSponsor];
+                                await supabase.from("profiles").upsert([{ user_id: userId, username: username || "athlete", sponsors: updatedSponsors }], { onConflict: "user_id" });
+                                setSponsors(updatedSponsors);
+                              }}
+                              className="w-full p-4 bg-white border-2 border-emerald-500/20 rounded-2xl focus:border-emerald-500 focus:outline-none font-bold text-sm text-emerald-900 placeholder-emerald-200"
+                            />
+                            <p className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest px-2">Nom de ton équipementier personnalisé</p>
+                          </div>
+                        )}
                       </div>
 
                       {/* PARTENAIRES SECTION */}
@@ -2476,11 +2498,50 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
+                <div className="flex flex-col gap-4 mt-4 pt-6 border-t border-slate-100">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Ou ajouter manuellement</span>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Nom du partenaire..." 
+                      value={modalMode === 'equipementier' ? customEquipName : customSponsorName}
+                      onChange={(e) => modalMode === 'equipementier' ? setCustomEquipName(e.target.value) : setCustomSponsorName(e.target.value)}
+                      className="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-slate-900 focus:outline-none font-bold text-sm"
+                    />
+                    <button
+                      onClick={async () => {
+                        const name = modalMode === 'equipementier' ? customEquipName : customSponsorName;
+                        if (!name.trim()) return;
+                        
+                        if (modalMode === 'equipementier') {
+                          setSelectedEquip("Autre");
+                          setShowEquipModal(false);
+                          const newSponsor = { id: 'main-equip', name: name, logo: "🏢 " + name, category: "Équipementier" };
+                          const otherSponsors = sponsors.filter(s => s.category !== "Équipementier");
+                          const updatedSponsors = [...otherSponsors, newSponsor];
+                          await supabase.from("profiles").upsert([{ user_id: userId, username: username || "athlete", sponsors: updatedSponsors }], { onConflict: "user_id" });
+                          setSponsors(updatedSponsors);
+                        } else {
+                          const newSponsor = { id: Date.now().toString(), name: name, logo: "🏢 " + name, category: "Partenaire" };
+                          const updatedSponsors = [...sponsors, newSponsor];
+                          await supabase.from("profiles").upsert([{ user_id: userId, username: username || "athlete", sponsors: updatedSponsors }], { onConflict: "user_id" });
+                          setSponsors(updatedSponsors);
+                          setCustomSponsorName("");
+                          setShowEquipModal(false);
+                        }
+                      }}
+                      className="px-6 bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-black transition-all"
+                    >
+                      Ajouter
+                    </button>
+                  </div>
+                </div>
+
                 <button
                   onClick={() => setShowEquipModal(false)}
-                  className="w-full py-4 bg-slate-100 text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all"
+                  className="w-full py-4 mt-2 bg-slate-100 text-slate-400 font-black text-[9px] uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-200 transition-all"
                 >
-                  Fermer
+                  Annuler & Fermer
                 </button>
               </motion.div>
             </div>
