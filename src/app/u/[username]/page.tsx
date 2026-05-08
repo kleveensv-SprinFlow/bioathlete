@@ -297,16 +297,12 @@ export default function PublicAthleteProfile() {
               <span className="text-[200px] font-black text-white/[0.03] tracking-tighter select-none">{username?.slice(0, 2).toUpperCase()}</span>
             </div>
           )}
-          {/* Cinematic gradient overlays */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#050505]/40 via-transparent to-[#050505]/40" />
-
           {/* Name and Bio anchored INSIDE the expanding hero to maintain alignment */}
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
-            className="absolute bottom-0 left-0 w-full p-6 md:p-12 z-10"
+            className="absolute bottom-0 left-0 w-full p-6 md:p-12 z-20"
           >
             <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-emerald-400/70 mb-3">Profil Athlète</p>
             <h1 className="text-5xl md:text-9xl font-black tracking-tighter text-white uppercase leading-[0.8]" style={{ textShadow: '0 0 80px rgba(0,255,136,0.15)' }}>
@@ -319,6 +315,12 @@ export default function PublicAthleteProfile() {
               </p>
             )}
           </motion.div>
+
+          {/* Cinematic gradient overlays with enhanced bottom fade */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#020203] via-transparent to-transparent z-10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#020203] via-[#020203]/40 to-transparent z-10" />
+          <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-[#020203] to-transparent z-10" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#020203]/40 via-transparent to-[#020203]/40 z-10" />
         </motion.div>
       </section>
 
