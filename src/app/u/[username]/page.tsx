@@ -392,7 +392,12 @@ export default function PublicAthleteProfile() {
         {/* ═══ GALLERY ═══ */}
         {galleryPhotos.length > 0 && (
           <div className="w-full">
-            <SectionTitle accent="Gallery">Moments</SectionTitle>
+            <div className="flex flex-col items-center gap-2 mb-8">
+              <div className="h-[1px] w-12 bg-emerald-500/50 mb-2" />
+              <h3 className="text-sm md:text-base font-black uppercase tracking-[0.4em] text-white/80 text-center">
+                Mes photos
+              </h3>
+            </div>
             <CinemaGallery photos={galleryPhotos} />
           </div>
         )}
