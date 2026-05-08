@@ -232,9 +232,9 @@ export default function PublicAthleteProfile() {
       />
 
       {/* ═══ CINEMATIC HEADER BANNER ═══ */}
-      <div className="fixed top-0 left-0 w-full z-[100] h-20 md:h-24 pointer-events-none">
+      <div className="fixed top-0 left-0 w-full z-[100] h-14 md:h-18 pointer-events-none">
         {/* Soft glass background that fades out to avoid "sharp cuts" */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-transparent backdrop-blur-[4px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/30 to-transparent backdrop-blur-[3px]" />
         
         {/* Bottom shine edge - ultra thin */}
         <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
@@ -246,7 +246,7 @@ export default function PublicAthleteProfile() {
             transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
             src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png" 
             alt="BioAthlete" 
-            className="h-12 md:h-16 object-contain invert opacity-90 logo-visibility-fix" 
+            className="h-20 md:h-28 object-contain invert opacity-95 logo-visibility-fix" 
           />
         </div>
       </div>
