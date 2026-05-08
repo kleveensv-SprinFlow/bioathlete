@@ -231,14 +231,15 @@ export default function PublicAthleteProfile() {
         style={{ scaleX: scrollYProgress }}
       />
 
-      <div className="absolute top-10 left-1/2 -translate-x-1/2 z-[100] w-full flex justify-center px-6 pointer-events-none">
+      <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 z-[100] w-full flex justify-center px-6 pointer-events-none">
         <motion.img 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.5 }}
           src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png" 
           alt="BioAthlete" 
-          className="h-24 md:h-32 object-contain logo-visibility-fix invert opacity-80" 
+          className="h-32 md:h-48 object-contain logo-visibility-fix opacity-90 transition-all duration-700" 
+          style={{ mixBlendMode: 'difference', filter: 'brightness(1.5)' }}
         />
       </div>
 
