@@ -321,21 +321,38 @@ export default function PublicAthleteProfile() {
         </section>
 
         {/* The Bento Section: Sponsors unified */}
-        <section className="flex flex-col gap-4">
-          {/* Brand support slogan - positioned between links and sponsors grid */}
+        <section className="flex flex-col gap-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="flex flex-col items-center justify-center gap-4 mb-6"
+            className="flex flex-col items-center justify-center gap-6"
           >
             {sponsors.length > 0 ? (
-              <div className="px-6 py-3 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md shadow-xl flex flex-col items-center gap-2">
-                <div className="h-px w-8 bg-emerald-500/30" />
-                <p className="text-[10px] md:text-xs uppercase tracking-[0.4em] text-white/60 font-black text-center max-w-2xl leading-relaxed">
-                  Marques en collaboration avec cet athlète
-                </p>
-              </div>
+              <>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-[1px] w-12 bg-emerald-500/50 mb-2" />
+                  <h3 className="text-sm md:text-base font-black uppercase tracking-[0.4em] text-white/80 text-center">
+                    Marques en collaboration
+                  </h3>
+                </div>
+
+                <div className="flex flex-wrap justify-center gap-3 md:gap-4 max-w-2xl">
+                  {sponsors.map((sp, idx) => (
+                    <motion.div 
+                      key={idx}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: idx * 0.1 }}
+                      className="px-6 py-4 rounded-xl bg-white/[0.03] border border-white/10 backdrop-blur-md hover:border-emerald-500/30 transition-all duration-500 group"
+                    >
+                      <span className="text-xs md:text-sm font-black text-white/70 group-hover:text-emerald-400 uppercase tracking-widest transition-colors">
+                        {sp.name}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              </>
             ) : (
               <div className="flex flex-col items-center gap-6 p-10 rounded-[32px] bg-gradient-to-b from-white/[0.05] to-transparent border border-white/10 backdrop-blur-xl shadow-2xl w-full max-w-xl mx-auto">
                 <div className="flex flex-col items-center gap-2 text-center">
@@ -359,6 +376,8 @@ export default function PublicAthleteProfile() {
               </div>
             )}
           </motion.div>
+        </section>
+         </motion.div>
 
           <Sponsors3DSection sponsors={sponsors} hideSlogan={true} />
         </section>
