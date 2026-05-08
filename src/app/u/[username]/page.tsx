@@ -377,11 +377,6 @@ export default function PublicAthleteProfile() {
             )}
           </motion.div>
         </section>
-         </motion.div>
-
-          <Sponsors3DSection sponsors={sponsors} hideSlogan={true} />
-        </section>
-
         {/* ═══ GALLERY ═══ */}
         {galleryPhotos.length > 0 && (
           <div className="w-full">
