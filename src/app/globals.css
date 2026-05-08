@@ -381,6 +381,8 @@ body {
 [data-theme="dark"] .bg-black\/30 { background-color: rgba(0,0,0,0.5) !important; }
 [data-theme="dark"] .bg-black\/50 { background-color: rgba(0,0,0,0.7) !important; }
 [data-theme="dark"] .bg-black\/70 { background-color: rgba(0,0,0,0.8) !important; }
+[data-theme="dark"] .bg-slate-900\/40,
+[data-theme="dark"] .bg-slate-900\/60 { background-color: rgba(0,0,0,0.8) !important; }
 
 /* ─── Cards with glassmorphism in dark mode ─── */
 [data-theme="dark"] .bg-white.border.border-slate-300,
