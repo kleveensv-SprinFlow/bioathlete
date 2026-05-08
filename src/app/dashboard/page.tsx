@@ -908,6 +908,7 @@ export default function DashboardPage() {
   };
 
   const handleRemoveSponsor = async (id: string | number, i: number) => {
+    if (!confirm("Voulez-vous vraiment supprimer ce partenaire ?")) return;
     if (id && typeof id === "string") {
       try {
         await supabase.from("sponsors").delete().eq("id", id);
