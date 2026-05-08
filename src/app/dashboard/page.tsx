@@ -252,6 +252,7 @@ export default function DashboardPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [views, setViews] = useState(0);
   const [modalMode, setModalMode] = useState<'equipementier' | 'partenaire'>('equipementier');
+  const [expandedDisciplines, setExpandedDisciplines] = useState<string[]>([]);
 
   // Preview handler
   useEffect(() => {
@@ -2146,24 +2147,67 @@ export default function DashboardPage() {
                           <p className="text-slate-400 font-bold text-sm">Aucun record ajouté.</p>
                         </div>
                       ) : (
-                        Object.keys(performances.reduce((acc, perf) => { if (!acc[perf.distance]) acc[perf.distance] = []; acc[perf.distance].push(perf); return acc; }, {} as { [key: string]: Performance[] })).map((distance) => (
-                          <div key={distance} className="flex flex-col gap-3">
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-2">{distance}</h4>
-                            <div className="flex flex-col gap-2">
-                              {performances.filter((p) => p.distance === distance).map((perf, i) => (
-                                <div key={perf.id || i} className="bg-white border border-slate-200 rounded-3xl p-5 flex items-center justify-between shadow-sm">
-                                  <div>
-                                    <span className="font-black text-lg text-slate-900">{perf.temps}</span>
-                                    <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-tight">{perf.competition} • {perf.date}</span>
+                        (() => {
+                          const grouped = performances.reduce((acc, perf) => {
+                            if (!acc[perf.distance]) acc[perf.distance] = [];
+                            acc[perf.distance].push(perf);
+                            return acc;
+                          }, {} as { [key: string]: Performance[] });
+
+                          return Object.entries(grouped).map(([distance, items]) => {
+                            const isExpanded = expandedDisciplines.includes(distance);
+                            const hasMultiple = items.length > 1;
+
+                            return (
+                              <div key={distance} className="flex flex-col gap-2">
+                                <button 
+                                  onClick={() => hasMultiple && setExpandedDisciplines(prev => prev.includes(distance) ? prev.filter(d => d !== distance) : [...prev, distance])}
+                                  className={`flex items-center justify-between p-4 rounded-2xl transition-all ${hasMultiple ? 'hover:bg-slate-50 cursor-pointer' : 'cursor-default'}`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-black text-[10px]">
+                                      {items.length}
+                                    </div>
+                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900">{distance}</h4>
                                   </div>
-                                  <button onClick={() => handleRemovePerformance(perf.id, i)} className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 transition-colors">
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))
+                                  {hasMultiple && (
+                                    <ChevronDown size={16} className={`text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                                  )}
+                                </button>
+
+                                <AnimatePresence>
+                                  {(!hasMultiple || isExpanded) && (
+                                    <motion.div 
+                                      initial={hasMultiple ? { height: 0, opacity: 0 } : false}
+                                      animate={{ height: 'auto', opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      className="flex flex-col gap-2 overflow-hidden px-1"
+                                    >
+                                      {items.map((perf, i) => (
+                                        <div key={perf.id || i} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                                          <div className="flex items-center gap-4">
+                                            <div className="flex flex-col">
+                                              <span className="font-black text-lg text-slate-900 leading-none">{perf.temps}s</span>
+                                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tight mt-1 truncate max-w-[150px]">
+                                                {perf.competition} • {perf.date}
+                                              </span>
+                                            </div>
+                                          </div>
+                                          <button 
+                                            onClick={() => handleRemovePerformance(perf.id, i)} 
+                                            className="w-9 h-9 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            );
+                          });
+                        })()
                       )}
                     </div>
                   </div>
