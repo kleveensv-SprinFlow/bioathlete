@@ -231,16 +231,24 @@ export default function PublicAthleteProfile() {
         style={{ scaleX: scrollYProgress }}
       />
 
-      <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 z-[100] w-full flex justify-center px-6 pointer-events-none">
-        <motion.img 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.5 }}
-          src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png" 
-          alt="BioAthlete" 
-          className="h-32 md:h-48 object-contain logo-visibility-fix opacity-90 transition-all duration-700" 
-          style={{ mixBlendMode: 'difference', filter: 'brightness(1.5)' }}
-        />
+      {/* ═══ CINEMATIC HEADER BANNER ═══ */}
+      <div className="fixed top-0 left-0 w-full z-[100] h-20 md:h-24 pointer-events-none">
+        {/* Soft glass background that fades out to avoid "sharp cuts" */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-transparent backdrop-blur-[4px]" />
+        
+        {/* Bottom shine edge - ultra thin */}
+        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
+
+        <div className="relative h-full w-full flex items-center justify-center px-6">
+          <motion.img 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+            src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png" 
+            alt="BioAthlete" 
+            className="h-12 md:h-16 object-contain invert opacity-90 logo-visibility-fix" 
+          />
+        </div>
       </div>
 
       {/* ═══ HERO CINEMATIC ═══ */}
