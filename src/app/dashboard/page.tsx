@@ -455,9 +455,19 @@ export default function DashboardPage() {
         
         if (publicUrl) {
           setAvatarUrl(publicUrl);
-          await supabase.from("profiles").upsert([{ user_id: userId, avatar_url: publicUrl }], { onConflict: "user_id" });
-          setProfSuccess("Photo de profil mise à jour avec succès !");
-          setTimeout(() => setProfSuccess(""), 3000);
+          // Utilisation de update plutôt que upsert pour une modification partielle plus fiable
+          const { error: updateErr } = await supabase
+            .from("profiles")
+            .update({ avatar_url: publicUrl })
+            .eq("user_id", userId);
+            
+          if (updateErr) {
+            console.error("Erreur lors de la mise à jour de l'avatar en base:", updateErr);
+            setProfError("La photo a été envoyée mais n'a pas pu être liée à votre profil.");
+          } else {
+            setProfSuccess("Photo de profil mise à jour avec succès !");
+            setTimeout(() => setProfSuccess(""), 3000);
+          }
         }
       }
     } catch (err) {
