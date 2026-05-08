@@ -30,7 +30,8 @@ import {
   X, 
   ArrowLeft,
   Camera,
-  Eye
+  Eye,
+  Check
 } from "lucide-react";
 
 // Components & Types
