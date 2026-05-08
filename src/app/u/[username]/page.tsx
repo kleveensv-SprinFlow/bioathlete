@@ -407,10 +407,13 @@ export default function PublicAthleteProfile() {
         )}
 
 
-        {/* ═══ PERFORMANCES ═══ */}
-        {Object.keys(processedPerformances).length > 0 && selectedDiscipline && processedPerformances[selectedDiscipline] && (
           <ParallaxSection className="w-full">
-            <SectionTitle accent="Evolution">Mon évolution</SectionTitle>
+            <div className="flex flex-col items-center gap-2 mb-8">
+              <div className="h-[1px] w-12 bg-emerald-500/50 mb-2" />
+              <h3 className="text-sm md:text-base font-black uppercase tracking-[0.4em] text-white/80 text-center">
+                Mon évolution
+              </h3>
+            </div>
 
             {/* Discipline tabs */}
             <div className="w-full overflow-x-auto pb-3 scrollbar-none mb-6">
