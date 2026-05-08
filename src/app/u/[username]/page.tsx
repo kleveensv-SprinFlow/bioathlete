@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
+import { motion, useScroll, useTransform, useMotionValueEvent, useSpring } from "framer-motion";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Custom3DChart } from "@/components/CustomChart";
@@ -60,27 +60,30 @@ export default function PublicAthleteProfile() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const { scrollYProgress } = useScroll();
+  
+  // Appliquer un lissage (Spring) pour un effet cinématique fluide
+  const smoothProgress = useSpring(scrollYProgress, {
+    damping: 30,
+    stiffness: 120,
+    mass: 0.1
+  });
 
-  // Sync video playback with scroll (Apple-style cinematic scrubbing)
-  useMotionValueEvent(scrollYProgress, "change", (latest) => {
+  // Sync video playback with smooth scroll progress
+  useMotionValueEvent(smoothProgress, "change", (latest) => {
     const video = videoRef.current;
     if (!video || isNaN(video.duration) || video.duration === 0) return;
 
-    // We map the entire page scroll (0 to 1) directly to the video duration
-    // But we only start advancing the video after scrolling past the first 15% (hero section)
     let progress = 0;
     if (latest > 0.15) {
       progress = (latest - 0.15) / 0.85;
     }
     progress = Math.max(0, Math.min(1, progress));
 
-    // Use requestAnimationFrame for fluid updates
     requestAnimationFrame(() => {
-      // Ensuring video is paused and updating current time
       if (!video.paused) video.pause();
-      // Only set if changed to avoid unnecessary DOM updates
       const targetTime = video.duration * progress;
-      if (Math.abs(video.currentTime - targetTime) > 0.05) {
+      // Seuil de précision pour éviter les micro-saccades
+      if (Math.abs(video.currentTime - targetTime) > 0.01) {
         video.currentTime = targetTime;
       }
     });
