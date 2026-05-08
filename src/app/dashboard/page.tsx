@@ -273,6 +273,7 @@ export default function DashboardPage() {
   const [selectedPartner, setSelectedPartner] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("apparel");
   const [customSponsorName, setCustomSponsorName] = useState("");
+  const [deletingId, setDeletingId] = useState<string | number | null>(null);
 
   const [newVideoFile, setNewVideoFile] = useState<File | null>(null);
   const [newVideoTitle, setNewVideoTitle] = useState("");
@@ -768,8 +769,16 @@ export default function DashboardPage() {
     setLinks(links.filter((_, idx) => idx !== i));
   };
 
-  const handleRemoveSponsor = async (id: string | number, i: number) => {
-    if (!confirm("Voulez-vous vraiment supprimer ce partenaire ?")) return;
+  const handleRemoveSponsor = async (e: React.MouseEvent, id: string | number, i: number) => {
+    e.stopPropagation();
+    
+    if (deletingId !== id) {
+      setDeletingId(id);
+      // Reset after 3 seconds if not confirmed
+      setTimeout(() => setDeletingId(null), 3000);
+      return;
+    }
+
     if (id) {
       try {
         await supabase.from("sponsors").delete().eq("id", id);
@@ -778,6 +787,7 @@ export default function DashboardPage() {
       }
     }
     setSponsors(sponsors.filter((_, idx) => idx !== i));
+    setDeletingId(null);
   };
 
   const handleRemoveVideo = async (id: string | number, i: number) => {
@@ -1174,10 +1184,10 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           <button 
-                            onClick={() => handleRemoveSponsor(sp.id, i)} 
-                            className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center transition-all hover:bg-red-500 hover:text-white shrink-0"
+                            onClick={(e) => handleRemoveSponsor(e, sp.id, i)} 
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 ${deletingId === sp.id ? "bg-red-600 text-white animate-pulse" : "bg-red-50 text-red-500 hover:bg-red-500 hover:text-white"}`}
                           >
-                            <Trash2 size={16} />
+                            {deletingId === sp.id ? <Check size={16} /> : <Trash2 size={16} />}
                           </button>
                         </div>
                       ))}
