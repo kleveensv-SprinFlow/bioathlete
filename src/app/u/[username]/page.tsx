@@ -281,14 +281,14 @@ export default function PublicAthleteProfile() {
       </div>
 
       {/* ═══ HERO CINEMATIC ═══ */}
-      <section ref={heroRef} className="relative w-full h-screen overflow-hidden flex justify-center pt-20">
+      <section ref={heroRef} className="relative w-full h-[500px] flex justify-center">
         {/* Background image with Pill-to-Hero reveal animation */}
         <motion.div 
-          initial={{ width: '150px', height: '60px', borderRadius: '100px', opacity: 0, y: 20 }}
-          animate={{ width: '100%', height: '500px', borderRadius: '24px', opacity: 1, y: 0 }}
+          initial={{ width: '150px', height: '60px', borderRadius: '100px', opacity: 0, y: 100 }}
+          animate={{ width: '100%', height: '500px', borderRadius: '0px', opacity: 1, y: 0 }}
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
           style={{ scale: heroScale, opacity: heroOpacity }} 
-          className="relative overflow-hidden z-0 shadow-2xl"
+          className="absolute inset-0 overflow-hidden z-0 shadow-2xl"
         >
           {profileData.avatar_url ? (
             <img src={profileData.avatar_url} alt={username} className="w-full h-full object-cover object-top" onError={e => { e.currentTarget.style.display = 'none'; }} />
@@ -300,27 +300,26 @@ export default function PublicAthleteProfile() {
           {/* Cinematic gradient overlays */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/60 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#050505]/40 via-transparent to-[#050505]/40" />
-        </motion.div>
 
-        {/* Name with parallax depth */}
-        <motion.div style={{ y: nameY, opacity: nameOpacity }} className="absolute bottom-0 left-0 w-full p-6 md:p-12 z-10">
-          <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}>
+          {/* Name and Bio anchored INSIDE the expanding hero to maintain alignment */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="absolute bottom-0 left-0 w-full p-6 md:p-12 z-10"
+          >
             <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-emerald-400/70 mb-3">Profil Athlète</p>
             <h1 className="text-5xl md:text-9xl font-black tracking-tighter text-white uppercase leading-[0.8]" style={{ textShadow: '0 0 80px rgba(0,255,136,0.15)' }}>
               {(profileData.full_name || username).toUpperCase()}
             </h1>
+            
+            {profileData.bio && (
+              <p className="text-white/30 text-sm md:text-base max-w-xl leading-relaxed mt-10 font-light">
+                {profileData.bio}
+              </p>
+            )}
           </motion.div>
-
-          {/* Bio */}
-          {profileData.bio && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7, duration: 0.8 }}
-              className="text-white/30 text-sm md:text-base max-w-xl leading-relaxed mt-10 font-light">
-              {profileData.bio}
-            </motion.p>
-          )}
-
         </motion.div>
-
       </section>
 
       {/* ═══ CONTENT BENTO GRID ═══ */}
