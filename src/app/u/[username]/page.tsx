@@ -410,7 +410,7 @@ export default function PublicAthleteProfile() {
         {/* ═══ PERFORMANCES ═══ */}
         {Object.keys(processedPerformances).length > 0 && selectedDiscipline && processedPerformances[selectedDiscipline] && (
           <ParallaxSection className="w-full">
-            <SectionTitle accent="Analytics">Performances</SectionTitle>
+            <SectionTitle accent="Evolution">Mon évolution</SectionTitle>
 
             {/* Discipline tabs */}
             <div className="w-full overflow-x-auto pb-3 scrollbar-none mb-6">
