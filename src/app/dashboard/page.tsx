@@ -59,17 +59,6 @@ const staggerItem = {
   show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
 };
 
-const PREDEFINED_EQUIPEMENTIERS = [
-  { name: "Nike", logo: "https://www.google.com/s2/favicons?domain=nike.com&sz=128" },
-  { name: "Adidas", logo: "https://www.google.com/s2/favicons?domain=adidas.com&sz=128" },
-  { name: "Puma", logo: "https://www.google.com/s2/favicons?domain=puma.com&sz=128" },
-  { name: "Asics", logo: "https://www.google.com/s2/favicons?domain=asics.com&sz=128" },
-  { name: "New Balance", logo: "https://www.google.com/s2/favicons?domain=newbalance.com&sz=128" },
-  { name: "Kiprun", logo: "https://www.google.com/s2/favicons?domain=kiprun.com&sz=128" },
-  { name: "Mizuno", logo: "https://www.google.com/s2/favicons?domain=mizuno.com&sz=128" },
-  { name: "Hoka", logo: "https://www.google.com/s2/favicons?domain=hoka.com&sz=128" },
-  { name: "Saucony", logo: "https://www.google.com/s2/favicons?domain=saucony.com&sz=128" },
-  { name: "On Running", logo: "https://www.google.com/s2/favicons?domain=on-running.com&sz=128" },
 const SPONSOR_CATEGORIES = [
   { id: "apparel", name: "Vêtements / Chaussures", icon: "👟" },
   { id: "nutrition", name: "Nutrition / Énergie", icon: "🍎" },
