@@ -405,8 +405,8 @@ export default function PublicAthleteProfile() {
             </div>
           </ParallaxSection>
         )}
-
-
+        {/* ═══ PERFORMANCES ═══ */}
+        {Object.keys(processedPerformances).length > 0 && selectedDiscipline && processedPerformances[selectedDiscipline] && (
           <ParallaxSection className="w-full">
             <div className="flex flex-col items-center gap-2 mb-8">
               <div className="h-[1px] w-12 bg-emerald-500/50 mb-2" />
