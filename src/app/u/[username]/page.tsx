@@ -67,11 +67,12 @@ export default function PublicAthleteProfile() {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const { scrollYProgress } = useScroll();
   
-  // Appliquer un lissage (Spring) pour un effet cinématique fluide
+  // Appliquer un lissage (Spring) plus "élastique" pour absorber les chocs de scroll rapide
   const smoothProgress = useSpring(scrollYProgress, {
-    damping: 30,
-    stiffness: 120,
-    mass: 0.1
+    damping: 45,      // Plus de damping pour éviter les rebonds
+    stiffness: 90,     // Un peu moins de raideur pour plus de fluidité
+    mass: 0.1,
+    restDelta: 0.001
   });
 
   // Sync video playback with smooth scroll progress
@@ -85,13 +86,17 @@ export default function PublicAthleteProfile() {
     }
     progress = Math.max(0, Math.min(1, progress));
 
+    const targetTime = video.duration * progress;
+    
+    // OPTIMISATION : Ne seeker que si le changement est significatif (> 1/100ème de seconde)
+    if (Math.abs(video.currentTime - targetTime) < 0.01) return;
+
     requestAnimationFrame(() => {
-      if (!video.paused) video.pause();
-      const targetTime = video.duration * progress;
-      // Seuil de précision pour éviter les micro-saccades
-      if (Math.abs(video.currentTime - targetTime) > 0.01) {
-        video.currentTime = targetTime;
+      // Forcer la pause seulement si nécessaire pour libérer des ressources
+      if (!video.paused && !video.seeking) {
+        video.pause();
       }
+      video.currentTime = targetTime;
     });
   });
 
