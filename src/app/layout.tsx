@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import Script from "next/script";
+import ThemeProvider from "./ThemeProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,13 +34,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
         <link rel="icon" href="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/PhotoRoom-20260504_162240.png" />
         <link rel="apple-touch-icon" href="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/PhotoRoom-20260504_162240.png" />
         <link rel="manifest" href="/manifest.json" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        {/* Prevent flash of wrong theme */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          try {
+            var t = localStorage.getItem('bioathlete-theme');
+            if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t);
+          } catch(e) {}
+        ` }} />
       </head>
-      <body className="antialiased bg-black text-white min-h-screen flex flex-col justify-between">
+      <body className="antialiased min-h-screen flex flex-col justify-between" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
         <Script
           id="sw-reg"
           strategy="afterInteractive"
@@ -60,25 +72,28 @@ export default function RootLayout({
             `,
           }}
         />
-        <div className="flex-grow">
-          {children}
-        </div>
-        <footer className="w-full py-6 border-t border-white/5 text-center flex flex-col sm:flex-row items-center justify-center gap-4 text-[10px] text-gray-500 font-medium select-none bg-black/30 backdrop-blur-md relative z-10">
-          <p>© {new Date().getFullYear()} BioAthlete. Tous droits réservés.</p>
-          <div className="flex items-center gap-3">
-            <Link href="/cgu" className="hover:text-emerald-400 hover:underline">
-              CGU
-            </Link>
-            <span className="text-white/10 select-none">•</span>
-            <Link href="/confidentialite" className="hover:text-emerald-400 hover:underline">
-              Confidentialité
-            </Link>
-            <span className="text-white/10 select-none">•</span>
-            <Link href="/mentions-legales" className="hover:text-emerald-400 hover:underline">
-              Mentions Légales
-            </Link>
+        <ThemeProvider>
+          <div className="flex-grow">
+            {children}
           </div>
-        </footer>
+          <footer className="w-full py-6 text-center flex flex-col sm:flex-row items-center justify-center gap-4 text-[10px] font-medium select-none relative z-10"
+            style={{ borderTop: "1px solid var(--footer-border)", color: "var(--footer-text)", background: "var(--footer-bg)", backdropFilter: "blur(12px)" }}>
+            <p>© {new Date().getFullYear()} BioAthlete. Tous droits réservés.</p>
+            <div className="flex items-center gap-3">
+              <Link href="/cgu" className="hover:text-emerald-400 hover:underline transition-colors">
+                CGU
+              </Link>
+              <span style={{ color: "var(--border)" }}>•</span>
+              <Link href="/confidentialite" className="hover:text-emerald-400 hover:underline transition-colors">
+                Confidentialité
+              </Link>
+              <span style={{ color: "var(--border)" }}>•</span>
+              <Link href="/mentions-legales" className="hover:text-emerald-400 hover:underline transition-colors">
+                Mentions Légales
+              </Link>
+            </div>
+          </footer>
+        </ThemeProvider>
       </body>
     </html>
   );

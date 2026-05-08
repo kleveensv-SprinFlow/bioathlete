@@ -715,23 +715,7 @@ export default function RegisterPage() {
 
       </div>
 
-      {/* Modern Footer for visual consistency */}
-      <footer className="w-full py-6 border-t border-white/5 text-center flex flex-col sm:flex-row items-center justify-center gap-4 text-[10px] text-gray-500 font-medium select-none bg-black/30 backdrop-blur-md relative z-10">
-        <p>© {new Date().getFullYear()} BioAthlete. Tous droits réservés.</p>
-        <div className="flex items-center gap-3">
-          <Link href="/cgu" className="hover:text-emerald-400 hover:underline">
-            CGU
-          </Link>
-          <span className="text-white/10 select-none">•</span>
-          <Link href="/confidentialite" className="hover:text-emerald-400 hover:underline">
-            Confidentialité
-          </Link>
-          <span className="text-white/10 select-none">•</span>
-          <Link href="/mentions-legales" className="hover:text-emerald-400 hover:underline">
-            Mentions Légales
-          </Link>
-        </div>
-      </footer>
+
 
     </div>
   );

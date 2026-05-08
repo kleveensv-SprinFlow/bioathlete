@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -9,7 +11,7 @@ import {
   ResponsiveContainer,
   LabelList
 } from 'recharts';
-import { PerformanceRaw } from './page';
+import { PerformanceRaw } from '@/types';
 
 interface Props {
   records: PerformanceRaw[];
@@ -61,6 +63,7 @@ const CustomLabel = (props: any) => {
 
 export function Custom3DChart({ records, isEmbedded = false }: Props) {
   const data = useMemo(() => {
+    if (!records || records.length === 0) return [];
     const sorted = [...records]
       .map(r => ({
         ...r,

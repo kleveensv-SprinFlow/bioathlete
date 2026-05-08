@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { ThemeToggle } from "../ThemeProvider";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import jsPDF from "jspdf";
@@ -31,37 +32,15 @@ import {
   Eye
 } from "lucide-react";
 
-interface Performance {
-  id?: string;
-  date: string;
-  distance: string;
-  temps: string;
-  competition: string;
-  user_id?: string;
-}
+// Components & Types
+import { Custom3DChart } from "@/components/CustomChart";
+import { Skeleton } from "@/components/Skeleton";
+import { Sponsors3DSection } from "@/components/Sponsors3DSection";
+import LivePreviewModal from "./LivePreviewModal";
+import { PerformanceRaw, SocialLink, Sponsor, Video } from "@/types";
 
-interface SocialLink {
-  id: string | number;
-  title: string;
-  url: string;
-  icon: string;
-  user_id?: string;
-}
-
-interface Sponsor {
-  id: string | number;
-  name: string;
-  logo: string;
-  category?: string; // "Équipementier" or "Partenaire"
-  user_id?: string;
-}
-
-interface Video {
-  id: string | number;
-  url: string;
-  title: string;
-  user_id?: string;
-}
+// Re-map internal Performance type to shared PerformanceRaw for consistency
+type Performance = PerformanceRaw;
 
 const staggerContainer = {
   hidden: { opacity: 0 },
@@ -80,22 +59,28 @@ const staggerItem = {
 };
 
 const PREDEFINED_EQUIPEMENTIERS = [
-  { name: "Nike", logo: "👟 Nike" },
-  { name: "Adidas", logo: "👟 Adidas" },
-  { name: "Puma", logo: "👟 Puma" },
-  { name: "Asics", logo: "👟 Asics" },
-  { name: "New Balance", logo: "👟 NB" },
-  { name: "Kiprun", logo: "👟 Kiprun" },
-  { name: "Decathlon", logo: "👟 Decathlon" },
-  { name: "Mizuno", logo: "👟 Mizuno" },
-  { name: "Hoka", logo: "👟 Hoka" },
-  { name: "Saucony", logo: "👟 Saucony" },
+  { name: "Nike", logo: "https://www.google.com/s2/favicons?domain=nike.com&sz=128" },
+  { name: "Adidas", logo: "https://www.google.com/s2/favicons?domain=adidas.com&sz=128" },
+  { name: "Puma", logo: "https://www.google.com/s2/favicons?domain=puma.com&sz=128" },
+  { name: "Asics", logo: "https://www.google.com/s2/favicons?domain=asics.com&sz=128" },
+  { name: "New Balance", logo: "https://www.google.com/s2/favicons?domain=newbalance.com&sz=128" },
+  { name: "Kiprun", logo: "https://www.google.com/s2/favicons?domain=kiprun.com&sz=128" },
+  { name: "Mizuno", logo: "https://www.google.com/s2/favicons?domain=mizuno.com&sz=128" },
+  { name: "Hoka", logo: "https://www.google.com/s2/favicons?domain=hoka.com&sz=128" },
+  { name: "Saucony", logo: "https://www.google.com/s2/favicons?domain=saucony.com&sz=128" },
+  { name: "On Running", logo: "https://www.google.com/s2/favicons?domain=on-running.com&sz=128" },
+  { name: "Joma", logo: "https://www.google.com/s2/favicons?domain=joma-sport.com&sz=128" },
 ];
 
+
 const PREDEFINED_PARTENAIRES = [
-  { name: "Red Bull", logo: "🥤 Red Bull" },
-  { name: "Oakley", logo: "🕶️ Oakley" },
-  { name: "Yazio", logo: "🥗 Yazio" },
+  { name: "Red Bull", logo: "https://www.google.com/s2/favicons?domain=redbull.com&sz=128" },
+  { name: "Oakley", logo: "https://www.google.com/s2/favicons?domain=oakley.com&sz=128" },
+  { name: "Monster Energy", logo: "https://www.google.com/s2/favicons?domain=monsterenergy.com&sz=128" },
+  { name: "Garmin", logo: "https://www.google.com/s2/favicons?domain=garmin.com&sz=128" },
+  { name: "Maurten", logo: "https://www.google.com/s2/favicons?domain=maurten.com&sz=128" },
+  { name: "SiS", logo: "https://www.google.com/s2/favicons?domain=scienceinsport.com&sz=128" },
+  { name: "Polar", logo: "https://www.google.com/s2/favicons?domain=polar.com&sz=128" },
 ];
 
 const ATHLETIC_DISCIPLINES: { [key: string]: string[] } = {
@@ -117,6 +102,7 @@ const ATHLETIC_DISCIPLINES: { [key: string]: string[] } = {
     "10km Marche", "20km Marche"
   ]
 };
+
 
 export function processPerformances(performances: any[]): { [key: string]: any } {
   const grouped: { [key: string]: any[] } = {};
@@ -220,286 +206,7 @@ const formatEmbedUrl = (url: string) => {
   }
 };
 
-function LivePreviewModal({
-  setShowFullPreview,
-  avatarUrl,
-  firstNameInput,
-  lastNameInput,
-  bioInput,
-  performances,
-  sponsors,
-  links,
-  videos,
-  username,
-  photoGallery
-}: any) {
-  const [selectedDiscipline, setSelectedDiscipline] = useState<string | null>(null);
-  const processed = processPerformances(performances);
-  const disciplines = Object.keys(processed);
-  
-  const modalRef = React.useRef<HTMLDivElement>(null);
-  const { scrollY } = useScroll({ container: modalRef });
-  const headerY = useTransform(scrollY, [0, 400], [0, 100]);
-
-  useEffect(() => {
-    if (disciplines.length > 0 && !selectedDiscipline) {
-      setSelectedDiscipline(disciplines[0]);
-    }
-  }, [disciplines, selectedDiscipline]);
-
-  const equipementiers = sponsors.filter((sp: any) => sp.category === "Équipementier");
-  const partenaires = sponsors.filter((sp: any) => sp.category === "Partenaire" || !sp.category);
-  const galleryPhotos = photoGallery || [];
-
-  return (
-    <motion.div
-      ref={modalRef}
-      initial={{ opacity: 0, scale: 0.9, filter: "blur(20px)" }}
-      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-      exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed inset-0 bg-slate-200 z-[100] overflow-y-auto font-sans"
-      onClick={() => setShowFullPreview(false)}
-    >
-      {/* Close Button Fixed */}
-      <button 
-        onClick={() => setShowFullPreview(false)} 
-        className="fixed top-6 right-6 w-12 h-12 bg-white/40 hover:bg-white/60 backdrop-blur-xl border border-slate-200 rounded-full flex items-center justify-center text-slate-900 font-bold text-xl transition-all z-[110]"
-      >
-        ✕
-      </button>
-
-      {/* BACKGROUND EFFECTS */}
-      <div className="fixed top-[-15%] left-[-15%] w-[600px] h-[600px] bg-white/80 rounded-full blur-[140px] pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-15%] right-[-15%] w-[600px] h-[600px] bg-slate-200/50 rounded-full blur-[140px] pointer-events-none z-0"></div>
-
-      <div className="relative z-10 flex flex-col items-center w-full max-w-4xl mx-auto px-4 md:px-8 py-12" onClick={(e) => e.stopPropagation()}>
-        
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          animate="show"
-          className="w-full flex flex-col gap-16 pb-32 pt-24 select-none"
-        >
-          {/* LOGO CENTERED */}
-          <div className="absolute top-[-10px] left-0 right-0 z-50 pointer-events-none flex justify-center">
-            <img
-              src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png"
-              alt="BioAthlete Logo"
-              className="h-44 object-contain brightness-0 opacity-80"
-            />
-          </div>
-
-          {/* HERO SECTION */}
-          <motion.div
-            variants={staggerItem}
-            className="relative w-full h-[500px] md:h-[600px] overflow-hidden rounded-3xl shadow-2xl group"
-          >
-            <motion.div style={{ y: headerY }} className="absolute inset-0 w-full h-[120%] -top-[10%]">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={username}
-                  className="w-full h-full object-cover object-top select-none"
-                />
-              ) : (
-                <div className="w-full h-full bg-slate-200 flex flex-col items-center justify-center relative">
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/40 via-slate-200 to-slate-300 opacity-60"></div>
-                  <div className="font-black text-8xl md:text-[120px] tracking-tighter text-slate-400 select-none z-10">
-                    {(firstNameInput || "BA").slice(0, 2).toUpperCase()}
-                  </div>
-                </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/40 to-transparent"></div>
-            </motion.div>
-
-            <div className="absolute bottom-0 left-0 w-full p-6 md:p-10 flex flex-col gap-2">
-              <div className="flex flex-col gap-1">
-                <h1 className="text-4xl md:text-6xl font-black tracking-tight text-slate-900 uppercase">
-                  {(firstNameInput || "Prénom").toUpperCase()} {(lastNameInput || "Nom").toUpperCase()}
-                </h1>
-                <p className="text-slate-500 text-[10px] md:text-xs font-black uppercase tracking-[0.3em]">
-                  Athlète de haut niveau
-                </p>
-              </div>
-              <p className="text-slate-600 text-sm md:text-base max-w-2xl leading-relaxed backdrop-blur-xl bg-white p-4 rounded-2xl border border-slate-300 mt-2">
-                {bioInput || "Visant l'excellence à chaque foulée, repoussant les limites de la performance athlétique."}
-              </p>
-
-              {links.length > 0 && (
-                <div className="flex gap-3 mt-4">
-                  {links.map((link: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="w-10 h-10 rounded-full bg-white backdrop-blur-xl border border-slate-300 flex items-center justify-center text-lg hover:bg-slate-100 hover:border-slate-400 transition-all duration-300"
-                    >
-                      {link.icon || "🔗"}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </motion.div>
-
-          {/* BENTO GRID SPONSORS */}
-          <motion.div variants={staggerItem} className="w-full flex flex-col gap-6">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 px-2">
-              Partenaires <span className="text-white">&</span> Sponsors
-            </h3>
-
-            {(equipementiers.length === 0 && partenaires.length === 0) ? (
-              <div className="w-full backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center text-center">
-                <span className="text-4xl mb-4 grayscale opacity-50">🤝</span>
-                <h4 className="text-white font-black text-lg tracking-wide uppercase mb-2">Espace Sponsoring</h4>
-                <p className="text-gray-500 text-sm max-w-sm">Associez votre marque à l'excellence.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                {equipementiers.map((eq: any, idx: number) => (
-                  <div key={`eq-${idx}`} className="col-span-2 backdrop-blur-xl bg-white border border-slate-300 rounded-3xl p-6 md:p-10 flex items-center justify-center relative overflow-hidden group">
-                    <div className="absolute top-4 left-4 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 opacity-40">Équipementier Officiel</div>
-                    <span className="text-5xl md:text-6xl grayscale group-hover:grayscale-0 transition-all duration-500">{eq.logo}</span>
-                  </div>
-                ))}
-                {partenaires.map((sp: any, idx: number) => (
-                  <div key={`sp-${idx}`} className="col-span-1 backdrop-blur-xl bg-white border border-slate-300 rounded-3xl p-6 flex items-center justify-center group">
-                    <span className="text-3xl md:text-4xl grayscale group-hover:grayscale-0 transition-all duration-300">{sp.logo}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-
-          {/* GALLERY */}
-          {galleryPhotos.length > 0 && (
-            <motion.div variants={staggerItem} className="w-full select-none">
-              <div className="w-full flex items-center gap-4 overflow-x-auto pb-4 pt-2 snap-x select-none scrollbar-none">
-                {galleryPhotos.map((photo: any, i: number) => (
-                  <motion.div
-                    key={i}
-                    whileHover={{ scale: 1.03 }}
-                    className="w-[200px] flex-shrink-0 snap-center backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl overflow-hidden select-none"
-                  >
-                    <img
-                      src={photo.url}
-                      alt={photo.title}
-                      className="w-full h-28 object-cover select-none"
-                      onError={(e) => e.currentTarget.src = 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=400&q=80'}
-                    />
-                    <div className="p-3 text-[11px] font-bold text-gray-300 text-center uppercase tracking-wide truncate">
-                      {photo.title}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* PERFORMANCES */}
-          {disciplines.length > 0 && selectedDiscipline && processed[selectedDiscipline] && (
-            <motion.div variants={staggerItem} className="w-full flex flex-col gap-6 select-none">
-              <div className="w-full overflow-x-auto pb-2 scrollbar-none snap-x">
-                <div className="flex gap-2">
-                  {disciplines.map((disc) => (
-                    <button
-                      key={disc}
-                      onClick={() => setSelectedDiscipline(disc)}
-                      className={`snap-center px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all duration-300 ${
-                        selectedDiscipline === disc
-                          ? "bg-[#00FF88]/10 text-[#00FF88] border border-[#00FF88]/30"
-                          : "bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10"
-                      }`}
-                    >
-                      {disc}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="backdrop-blur-xl bg-white border border-slate-300 rounded-3xl p-6 md:p-8 flex flex-col items-center justify-center relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent"></div>
-                <div className="text-slate-400 font-black text-[10px] tracking-[0.3em] uppercase mb-4">Record Personnel</div>
-                <div className="text-6xl md:text-8xl font-black text-slate-900 tracking-tighter">
-                  {processed[selectedDiscipline].bestRecord.temps}
-                  <span className="text-2xl md:text-3xl text-slate-400 ml-1">s</span>
-                </div>
-                <div className="mt-8 flex flex-col items-center gap-1 text-center">
-                  <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    <span className="text-emerald-500 text-[10px] font-black tracking-[0.2em] uppercase">
-                      {processed[selectedDiscipline].improvementPercentage} D'ÉVOLUTION
-                    </span>
-                  </div>
-                  {processed[selectedDiscipline].bestRecord.competition && (
-                    <div className="text-gray-400 text-xs font-medium uppercase tracking-wider mt-2">{processed[selectedDiscipline].bestRecord.competition}</div>
-                  )}
-                </div>
-              </div>
-
-              <div className="w-full h-[200px] mt-2 relative">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={processed[selectedDiscipline].records.map((r: any) => ({ ...r, tempsVal: parseFloat(r.temps.toString()) }))}>
-                    <Tooltip 
-                      contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '16px', padding: '12px' }}
-                      labelStyle={{ color: '#64748b', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em' }}
-                      itemStyle={{ color: '#f8fafc', fontSize: 16, fontWeight: '900' }}
-                    />
-                    <Area type="monotone" dataKey="tempsVal" stroke="#94a3b8" strokeWidth={2} fillOpacity={1} fill="url(#glow-gradient-modal)" />
-                    <defs>
-                      <linearGradient id="glow-gradient-modal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.1} />
-                        <stop offset="100%" stopColor="#94a3b8" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </motion.div>
-          )}
-
-          {/* VIDEOS */}
-          {videos.length > 0 && (
-            <motion.div variants={staggerItem} className="w-full flex flex-col gap-6 select-none">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 px-1">Vidéos <span className="text-white">&</span> Médias</h3>
-              <div className="flex flex-col gap-4">
-                {videos.map((vid: any, idx: number) => (
-                  <motion.div
-                    key={idx}
-                    whileHover={{ scale: 1.02 }}
-                    className="w-full backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-3 overflow-hidden"
-                  >
-                    <div className="w-full rounded-xl border border-white/10 overflow-hidden bg-black flex items-center justify-center">
-                      {vid.url.includes("youtube.com") || vid.url.includes("youtu.be") || vid.url.includes("vimeo") ? (
-                        <iframe
-                          src={formatEmbedUrl(vid.url)}
-                          title={vid.title}
-                          className="w-full h-44 border-none"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
-                      ) : (
-                        <video src={vid.url} controls className="w-full max-h-64 object-contain" />
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          <motion.div variants={staggerItem} className="w-full">
-            <footer className="text-center mt-6">
-              <p className="text-[10px] text-gray-600 font-medium uppercase tracking-widest flex items-center justify-center gap-1">
-                Optimisé par <span className="text-[#00FF88]/80 font-bold">BioAthlete.space</span>
-              </p>
-            </footer>
-          </motion.div>
-
-        </motion.div>
-      </div>
-    </motion.div>
-  );
-}
+// LivePreviewModal is now imported from ./LivePreviewModal.tsx
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -514,13 +221,17 @@ export default function DashboardPage() {
   const [profError, setProfError] = useState("");
   const [isPremium, setIsPremium] = useState(false);
   const [showStripeModal, setShowStripeModal] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoError, setPromoError] = useState("");
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showEquipModal, setShowEquipModal] = useState(false);
   const [showAddPerfModal, setShowAddPerfModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showFullPreview, setShowFullPreview] = useState(false);
   const [profileView, setProfileView] = useState<'menu' | 'identity' | 'performances' | 'links' | 'sponsors' | 'photos'>('menu');
   const [justSaved, setJustSaved] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Profile enhancements
   const [bioInput, setBioInput] = useState("");
@@ -540,6 +251,7 @@ export default function DashboardPage() {
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [views, setViews] = useState(0);
+  const [modalMode, setModalMode] = useState<'equipementier' | 'partenaire'>('equipementier');
 
   // Preview handler
   useEffect(() => {
@@ -602,14 +314,14 @@ export default function DashboardPage() {
         try {
           const { data: existingProf, error: profErr } = await supabase
             .from("profiles")
-            .select("username, is_premium, bio, avatar_url, photos, full_name, views_count, birth_date")
+            .select("username, is_premium, bio, avatar_url, full_name, views_count, birth_date")
             .eq("user_id", uid)
             .maybeSingle();
 
-          if (!profErr && existingProf) {
+          if (existingProf) {
             profData = existingProf;
-          } else if (!existingProf) {
-            // It doesn't exist, let's create a default one
+          } else if (!profErr) {
+            // It doesn't exist, let's create a default one only if there was no query error
             const generatedUsername = "athlete-" + uid.slice(0, 5);
             const { data: newProf, error: createErr } = await supabase
               .from("profiles")
@@ -625,6 +337,8 @@ export default function DashboardPage() {
             if (!createErr && newProf) {
               profData = newProf;
             }
+          } else {
+            console.error("Erreur lors de la récupération du profil:", profErr);
           }
         } catch (e) {
           console.error(e);
@@ -642,13 +356,9 @@ export default function DashboardPage() {
           setAvatarUrl(profData.avatar_url || "");
           setViews(profData.views_count || 0);
           setBirthDateInput(profData.birth_date || "");
-
-          if (profData.photos && Array.isArray(profData.photos)) {
-            setPhotoGallery(profData.photos);
-          }
         }
 
-        // Fetch filtered data
+        // Fetch related data
         const { data: perfData, error: perfErr } = await supabase
           .from("performances")
           .select("*")
@@ -665,7 +375,17 @@ export default function DashboardPage() {
           .from("sponsors")
           .select("*")
           .eq("user_id", uid);
-        if (!spErr && spData) setSponsors(spData);
+        if (!spErr && spData) {
+          setSponsors(spData);
+          const equip = spData.find((s: any) => s.category === "Équipementier");
+          if (equip) setSelectedEquip(equip.name);
+        }
+
+        const { data: photoData, error: photoErr } = await supabase
+          .from("photo_gallery")
+          .select("*")
+          .eq("user_id", uid);
+        if (!photoErr && photoData) setPhotoGallery(photoData);
 
         const { data: vidData, error: vidErr } = await supabase
           .from("videos")
@@ -675,6 +395,8 @@ export default function DashboardPage() {
 
       } catch (err) {
         console.error("Erreur chargement Supabase:", err);
+      } finally {
+        setIsInitialLoading(false);
       }
     }
     loadUserAndContent();
@@ -835,33 +557,30 @@ export default function DashboardPage() {
     const publicUrl = await uploadFileToSupabase(newGalleryPhotoFile, 'gallery');
 
     if (publicUrl) {
-      const newPhoto = {
-        id: Date.now().toString(),
-        url: publicUrl,
-        title: newGalleryPhotoTitle || "",
-        date: newGalleryPhotoDate || new Date().toISOString().split('T')[0]
-      };
-
-      const updatedPhotos = [...photoGallery, newPhoto];
-
       try {
-        const { error } = await supabase
-          .from("profiles")
-          .upsert([{
+        const { data, error } = await supabase
+          .from("photo_gallery")
+          .insert([{
             user_id: userId,
-            username: username || "athlete",
-            photos: updatedPhotos
-          }], { onConflict: "user_id" });
-
+            url: publicUrl,
+            title: newGalleryPhotoTitle || "",
+            date: newGalleryPhotoDate || new Date().toISOString().split('T')[0]
+          }])
+          .select();
+ 
         if (error) throw error;
-
-        setPhotoGallery(updatedPhotos);
+ 
+        if (data && data.length > 0) {
+          setPhotoGallery([...photoGallery, data[0]]);
+        }
+        
         setNewGalleryPhotoFile(null);
         setNewGalleryPhotoTitle("");
         setNewGalleryPhotoDate("");
         setShowAddPhotoModal(false);
       } catch (err) {
-        console.error(err);
+        console.error("Error adding photo:", err);
+        setProfError("Erreur lors de l'enregistrement de la photo.");
       }
     }
     setIsUploading(false);
@@ -870,19 +589,14 @@ export default function DashboardPage() {
   const handleRemoveGalleryPhoto = async (photoId: string) => {
     if (!userId) return;
 
-    const updatedPhotos = photoGallery.filter(p => p.id !== photoId);
-
     try {
       const { error } = await supabase
-        .from("profiles")
-        .upsert([{
-          user_id: userId,
-          username: username || "athlete",
-          photos: updatedPhotos
-        }], { onConflict: "user_id" });
-
+        .from("photo_gallery")
+        .delete()
+        .eq("id", photoId);
+ 
       if (error) throw error;
-      setPhotoGallery(updatedPhotos);
+      setPhotoGallery(photoGallery.filter(p => p.id !== photoId));
       setSelectedPhoto(null);
     } catch (err) {
       console.error("Error removing photo:", err);
@@ -892,21 +606,17 @@ export default function DashboardPage() {
   const handleUpdateGalleryPhoto = async (photoId: string, newTitle: string, newDate: string) => {
     if (!userId) return;
 
-    const updatedPhotos = photoGallery.map(p => 
-      p.id === photoId ? { ...p, title: newTitle, date: newDate } : p
-    );
-
     try {
       const { error } = await supabase
-        .from("profiles")
-        .upsert([{
-          user_id: userId,
-          username: username || "athlete",
-          photos: updatedPhotos
-        }], { onConflict: "user_id" });
-
+        .from("photo_gallery")
+        .update({ title: newTitle, date: newDate })
+        .eq("id", photoId);
+ 
       if (error) throw error;
-      setPhotoGallery(updatedPhotos);
+      
+      setPhotoGallery(photoGallery.map(p => 
+        p.id === photoId ? { ...p, title: newTitle, date: newDate } : p
+      ));
       setSelectedPhoto(null);
     } catch (err) {
       console.error("Error updating photo:", err);
@@ -920,15 +630,26 @@ export default function DashboardPage() {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .upsert([{ user_id: userId, username: username || "athlete", is_premium: true }])
+        .update({ is_premium: true })
+        .eq("user_id", userId)
         .select();
 
-      if (!error && data && data.length > 0) {
+      if (error) {
+        console.error("Erreur SQL lors de l'activation:", error);
+        setPromoError("Erreur base de données : " + error.message);
+        return;
+      }
+
+      if (data && data.length > 0) {
         setIsPremium(true);
         setProfSuccess("Mode Élite débloqué avec succès ! 🔥");
+        setTimeout(() => setProfSuccess(""), 4000);
+      } else {
+         setPromoError("Profil introuvable pour la mise à jour.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setPromoError("Erreur inattendue : " + err.message);
     }
   };
 
@@ -1246,36 +967,68 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-200 text-slate-900 font-sans selection:bg-emerald-500 selection:text-white pb-16">
-      {/* Background effects */}
-      <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-white/40 rounded-full blur-[120px] pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-slate-200/50 rounded-full blur-[120px] pointer-events-none z-0"></div>
+    <div className="min-h-screen font-sans selection:bg-emerald-500 selection:text-white pb-16 transition-colors duration-500" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+      {/* Background ambient blobs — adapt to theme */}
+      <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none z-0" style={{ background: 'var(--blob-1)' }}></div>
+      <div className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none z-0" style={{ background: 'var(--blob-2)' }}></div>
 
       <div className="relative z-10 max-w-md mx-auto px-5 pt-8 flex flex-col gap-8 min-h-screen">
-        {/* Top bar with logo, share icon and profile */}
+        
+        {/* Success Toast */}
+        <AnimatePresence>
+          {profSuccess && (
+            <motion.div 
+              initial={{ opacity: 0, y: -50 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: -50 }}
+              className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] px-6 py-3 rounded-full bg-emerald-500 text-white font-black text-xs uppercase tracking-widest shadow-[0_0_40px_rgba(16,185,129,0.4)] flex items-center gap-3 whitespace-nowrap"
+            >
+              <span>✨</span> {profSuccess}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Top bar with theme toggle, share, and profile */}
         <div className="flex items-center justify-between select-none">
-          <button
-            onClick={() => setShowShareModal(true)}
-            className="w-11 h-11 bg-white border border-slate-300 text-slate-900 rounded-2xl flex items-center justify-center hover:bg-slate-100 transition-all duration-300 select-none"
-            title="Partager mon profil"
-          >
-            <span className="text-base">🔗</span>
-          </button>
-          <div className="flex-1 px-4 text-center">
-            <h1 className="text-xl font-black tracking-tighter text-slate-900 uppercase">
-              Salut, {(firstNameInput || "Athlète").toUpperCase()}
-            </h1>
-            <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">Gestion du Profil</p>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-300 select-none cursor-pointer"
+              style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+              title="Partager mon profil"
+            >
+              <span className="text-base">🔗</span>
+            </button>
+          </div>
+          <div className="flex-1 px-4 flex flex-col items-center">
+            {isInitialLoading ? (
+              <Skeleton className="h-6 w-32 mb-1" />
+            ) : (
+              <h1 className="text-xl font-black tracking-tighter uppercase" style={{ color: 'var(--text-primary)' }}>
+                Salut, {(firstNameInput || "Athlète").toUpperCase()}
+              </h1>
+            )}
+            {isPremium ? (
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-500 flex items-center gap-1">
+                <span>✦</span> ÉLITE <span>✦</span>
+              </p>
+            ) : (
+              <p className="text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: 'var(--text-muted)' }}>Gestion du Profil</p>
+            )}
           </div>
           <div className="relative">
             <button
               onClick={() => setShowProfileModal(true)}
-              className="w-12 h-12 rounded-full border border-slate-300 overflow-hidden bg-white flex items-center justify-center hover:scale-105 hover:border-slate-400 transition-all duration-300 select-none cursor-pointer"
+              className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 select-none cursor-pointer"
+              style={{ background: 'var(--card-bg)', border: '1px solid var(--border)' }}
             >
-              {avatarUrl ? (
+              {isInitialLoading ? (
+                <Skeleton className="w-full h-full rounded-full" />
+              ) : avatarUrl ? (
                 <img src={avatarUrl} alt="Photo de profil" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-lg text-slate-400 font-black select-none">
+                <span className="text-lg font-black select-none" style={{ color: 'var(--text-muted)' }}>
                   {(firstNameInput || "A").charAt(0).toUpperCase()}
                 </span>
               )}
@@ -1285,7 +1038,7 @@ export default function DashboardPage() {
 
 
         {/* Navigation Tabs */}
-        <div className="flex overflow-x-auto gap-1 pb-2 scrollbar-none w-full border-b border-slate-300">
+        <div className="flex overflow-x-auto gap-1 pb-2 scrollbar-none w-full" style={{ borderBottom: '1px solid var(--border)' }}>
           {[
             { key: "apercu", label: "Aperçu" },
             { key: "stats", label: "Statistiques" }
@@ -1293,7 +1046,8 @@ export default function DashboardPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.2em] whitespace-nowrap transition-all duration-500 rounded-t-2xl ${activeTab === tab.key ? "text-slate-900 border-b-2 border-slate-900 bg-white" : "text-slate-500 hover:text-slate-700"}`}
+              className="px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.2em] whitespace-nowrap transition-all duration-500 rounded-t-2xl cursor-pointer"
+              style={activeTab === tab.key ? { color: 'var(--text-primary)', borderBottom: '2px solid var(--accent)', background: 'var(--card-bg)' } : { color: 'var(--text-muted)' }}
             >
               {tab.label}
             </button>
@@ -1305,7 +1059,16 @@ export default function DashboardPage() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-6 w-full">
             
             {/* Blurred Live Preview Card */}
-            <div className="relative rounded-3xl overflow-hidden select-none cursor-pointer group h-[500px] border border-slate-300 bg-white" onClick={() => setShowFullPreview(true)}>
+            <div className="relative rounded-3xl overflow-hidden select-none cursor-pointer group h-[500px]" style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', boxShadow: 'var(--card-shadow)' }} onClick={() => setShowFullPreview(true)}>
+              
+              {isInitialLoading && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ background: 'var(--card-bg)' }}>
+                  <div className="flex flex-col items-center gap-4">
+                    <Skeleton className="w-12 h-12 rounded-full" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+              )}
               
               {/* MINIATURE REPLICA OF THE REAL PROFILE (BLURRED) */}
               <div className="absolute inset-0 z-0 filter blur-[6px] group-hover:blur-[3px] transition-all duration-1000 scale-[1.02] opacity-100">
@@ -1391,7 +1154,6 @@ export default function DashboardPage() {
                 />
               )}
             </AnimatePresence>
-
           </motion.div>
         )}
 
@@ -1400,21 +1162,27 @@ export default function DashboardPage() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-6 w-full">
             
             {/* Visit stats */}
-            <div className="bg-white border border-slate-300 rounded-[2rem] p-6 flex items-center justify-between shadow-sm">
+            <div className="themed-card rounded-[2rem] p-6 flex items-center justify-between">
               <div>
                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-600 mb-1">Visibilité</h3>
-                <p className="text-3xl font-black text-slate-900 tracking-tighter">{views || 0} <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest ml-1">Vues totales</span></p>
+                {isInitialLoading ? (
+                  <Skeleton className="h-9 w-24" />
+                ) : (
+                  <p className="text-3xl font-black tracking-tighter" style={{ color: 'var(--text-primary)' }}>
+                    {views || 0} <span className="text-[10px] font-bold uppercase tracking-widest ml-1" style={{ color: 'var(--text-muted)' }}>Vues totales</span>
+                  </p>
+                )}
               </div>
-              <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-soft)' }}>
                 <Share2 className="text-emerald-500" size={24} />
               </div>
             </div>
-
+ 
             {/* Simple Audience Chart */}
-            <div className="bg-white border border-slate-300 rounded-[2rem] p-6 shadow-sm flex flex-col gap-4">
+            <div className="themed-card rounded-[2rem] p-6 flex flex-col gap-4">
               <div>
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Audience</h3>
-                <p className="text-sm font-black text-slate-900">Activité des 7 derniers jours</p>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: 'var(--text-muted)' }}>Audience</h3>
+                <p className="text-sm font-black" style={{ color: 'var(--text-primary)' }}>Activité des 7 derniers jours</p>
               </div>
               <div className="h-48 w-full pt-4">
                 <ResponsiveContainer width="100%" height="100%">
@@ -1464,73 +1232,86 @@ export default function DashboardPage() {
         {/* Premium Upgrade Stripe Modal */}
         <AnimatePresence>
           {showStripeModal && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-4 select-none">
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[150] flex items-center justify-center p-4 select-none">
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 15 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 15 }}
                 transition={{ duration: 0.3 }}
-                className="backdrop-blur-2xl bg-neutral-900/90 border border-emerald-500/30 rounded-3xl p-6 shadow-2xl max-w-sm w-full flex flex-col gap-5 border-t-emerald-400"
+                className="backdrop-blur-3xl bg-white/90 border border-white rounded-[2.5rem] p-8 shadow-2xl max-w-sm w-full flex flex-col gap-6"
               >
                 <div className="flex flex-col select-none">
-                  <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                  <span className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.3em] mb-1">
                     Élévation de statut
                   </span>
-                  <h3 className="text-lg font-black text-white tracking-tight leading-snug">
-                    Abonnement Mode Élite
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none">
+                    Mode Élite
                   </h3>
-                  <p className="text-gray-400 text-xs">
-                    Abonnement mensuel de 9.99 € • Annulable à tout moment
+                  <p className="text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-tight">
+                    Abonnement mensuel de 9.99 €
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-2.5">
-                  <div className="flex items-center gap-2 text-xs text-gray-300 font-medium">
-                    <span className="text-emerald-400 text-sm">⚡</span> Liens illimités (Plus de limites)
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3 text-xs text-slate-600 font-bold">
+                    <span className="w-6 h-6 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-500">⚡</span> Liens illimités
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-300 font-medium">
-                    <span className="text-emerald-400 text-sm">🏆</span> Vitrine certifiée Élite Pro
+                  <div className="flex items-center gap-3 text-xs text-slate-600 font-bold">
+                    <span className="w-6 h-6 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-500">🏆</span> Vitrine certifiée Élite
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-300 font-medium">
-                    <span className="text-emerald-400 text-sm">📄</span> Génération illimitée de Media Kit
+                  <div className="flex items-center gap-3 text-xs text-slate-600 font-bold">
+                    <span className="w-6 h-6 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-500">📊</span> Statistiques avancées
                   </div>
                 </div>
 
-                {/* Fake Stripe Credit Card Fields */}
-                <div className="flex flex-col gap-3 pt-2 border-t border-white/5 select-none">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                {/* Fake Stripe Credit Card Fields / Promo Code */}
+                <div className="flex flex-col gap-4 pt-4 border-t border-slate-100 select-none">
+                  
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">
+                      Code Promotionnel (Optionnel)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: ELITE50"
+                      value={promoCode}
+                      onChange={(e) => { setPromoCode(e.target.value); setPromoError(""); }}
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-emerald-500 focus:outline-none transition-all text-sm text-slate-900 font-bold uppercase"
+                    />
+                    {promoError && (
+                      <span className="text-[10px] text-red-500 font-bold px-1">{promoError}</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 px-1 py-2">
+                    <div className="h-px bg-slate-100 flex-1" />
+                    <span className="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Ou payer par carte</span>
+                    <div className="h-px bg-slate-100 flex-1" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 opacity-50 pointer-events-none">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">
                       Numéro de carte
                     </label>
                     <input
                       type="text"
                       placeholder="4242 4242 4242 4242"
                       defaultValue="4242424242424242"
-                      className="w-full p-3 bg-neutral-950 border border-white/10 focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600 rounded-xl"
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-900 font-bold"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                  <div className="grid grid-cols-2 gap-4 opacity-50 pointer-events-none">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">
                         Expiration
                       </label>
-                      <input
-                        type="text"
-                        placeholder="MM/YY"
-                        defaultValue="12/26"
-                        className="w-full p-3 bg-neutral-950 border border-white/10 focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600 rounded-xl"
-                      />
+                      <input type="text" placeholder="MM/YY" defaultValue="12/26" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-900 font-bold" />
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">
                         CVC
                       </label>
-                      <input
-                        type="text"
-                        placeholder="123"
-                        defaultValue="123"
-                        className="w-full p-3 bg-neutral-950 border border-white/10 focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600 rounded-xl"
-                      />
+                      <input type="text" placeholder="123" defaultValue="123" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-900 font-bold" />
                     </div>
                   </div>
                 </div>
@@ -1538,16 +1319,24 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-2 mt-2">
                   <button
                     onClick={async () => {
-                      await handleUpgradePremiumReal();
-                      setShowStripeModal(false);
+                      if (promoCode.trim().toLowerCase() === "kleveens") {
+                        await handleUpgradePremium();
+                        setShowStripeModal(false);
+                        setPromoCode("");
+                      } else if (promoCode.trim().length > 0) {
+                        setPromoError("Code promotionnel invalide");
+                      } else {
+                        await handleUpgradePremiumReal();
+                        setShowStripeModal(false);
+                      }
                     }}
-                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300"
+                    className="w-full py-5 bg-slate-900 hover:bg-black text-white font-black text-xs tracking-widest uppercase rounded-2xl shadow-xl transition-all"
                   >
-                    Activer mon abonnement (9.99€)
+                    🚀 Activer mon abonnement {promoCode.trim() ? "" : "(9.99€)"}
                   </button>
                   <button
-                    onClick={() => setShowStripeModal(false)}
-                    className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all"
+                    onClick={() => { setShowStripeModal(false); setPromoCode(""); setPromoError(""); }}
+                    className="w-full py-4 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-all"
                   >
                     Annuler
                   </button>
@@ -1558,37 +1347,37 @@ export default function DashboardPage() {
         </AnimatePresence>
         <AnimatePresence>
           {showShareModal && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-4 select-none">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[150] flex items-center justify-center p-4 select-none">
               <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 15 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 15 }}
-                transition={{ duration: 0.3 }}
-                className="backdrop-blur-2xl bg-neutral-900/90 border border-emerald-500/30 rounded-3xl p-6 shadow-2xl max-w-sm w-full flex flex-col gap-5 border-t-emerald-400"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="bg-white/95 border border-white rounded-[2rem] p-8 shadow-2xl max-w-sm w-full flex flex-col gap-6"
               >
                 <div className="flex flex-col select-none">
-                  <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                  <span className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.3em] mb-1">
                     Partager mon profil
                   </span>
-                  <h3 className="text-lg font-black text-white tracking-tight leading-snug">
-                    Lien de votre vitrine
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none">
+                    Lien Public
                   </h3>
-                  <p className="text-gray-400 text-xs">
-                    Partagez ce lien avec vos partenaires, sponsors et clubs pour maximiser votre visibilité.
+                  <p className="text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-tight">
+                    Maximisez votre visibilité athlétique
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-2 pt-2 border-t border-white/5 select-none">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                      Adresse Web
+                <div className="flex flex-col gap-4 pt-4 border-t border-slate-100 select-none">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">
+                      URL de votre vitrine
                     </label>
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
                         readOnly
                         value={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${username}`}
-                        className="w-full p-3 bg-neutral-950 border border-white/10 focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white rounded-xl select-all"
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-900 font-bold select-all focus:outline-none"
                       />
                     </div>
                   </div>
@@ -1599,18 +1388,18 @@ export default function DashboardPage() {
                     onClick={() => {
                       if (typeof window !== "undefined") {
                         navigator.clipboard.writeText(`${window.location.origin}/u/${username}`);
-                        setShareText("Lien copié dans le presse-papier !");
+                        setShareText("Copié !");
                         setTimeout(() => setShareText(""), 3000);
                         setShowShareModal(false);
                       }
                     }}
-                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 flex items-center justify-center gap-2"
+                    className="w-full py-5 bg-slate-900 hover:bg-black text-white font-black text-xs tracking-widest uppercase rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2"
                   >
-                    📋 Copier le lien
+                    {shareText || "📋 Copier le lien"}
                   </button>
                   <button
                     onClick={() => setShowShareModal(false)}
-                    className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all"
+                    className="w-full py-4 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-all"
                   >
                     Fermer
                   </button>
@@ -1623,20 +1412,20 @@ export default function DashboardPage() {
         {/* Add Performance Modal */}
         <AnimatePresence>
           {showAddPerfModal && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-4 select-none">
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[150] flex items-center justify-center p-4 select-none">
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 15 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 15 }}
                 transition={{ duration: 0.3 }}
-                className="backdrop-blur-2xl bg-neutral-900/90 border border-white/10 rounded-3xl p-6 shadow-2xl max-w-lg w-full flex flex-col gap-5 border-t-emerald-400 max-h-[90vh] overflow-y-auto"
+                className="backdrop-blur-3xl bg-white/90 border border-white rounded-[2.5rem] p-8 shadow-2xl max-w-lg w-full flex flex-col gap-6 max-h-[90vh] overflow-y-auto"
               >
                 <div className="flex flex-col select-none">
-                  <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                  <span className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.3em] mb-1">
                     Nouvelle performance
                   </span>
-                  <h3 className="text-lg font-black text-white tracking-tight leading-snug">
-                    Ajouter une performance
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none">
+                    Ajouter un record
                   </h3>
                 </div>
 
@@ -1647,11 +1436,11 @@ export default function DashboardPage() {
                   }}
                   className="flex flex-col gap-4"
                 >
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
                       Catégorie de discipline
                     </label>
-                    <div className="flex flex-wrap gap-1.5 p-1 bg-neutral-950/50 border border-white/5 rounded-2xl">
+                    <div className="flex flex-wrap gap-2 p-2 bg-slate-50 border border-slate-200 rounded-2xl">
                       {Object.keys(ATHLETIC_DISCIPLINES).map((cat) => (
                         <button
                           key={cat}
@@ -1660,10 +1449,10 @@ export default function DashboardPage() {
                             setSelectedDisciplineCategory(cat);
                             setNewDistance("");
                           }}
-                          className={`flex-1 min-w-[90px] px-2.5 py-2 text-[9px] font-black tracking-wider uppercase rounded-xl transition-all duration-300 select-none ${
+                          className={`flex-1 min-w-[90px] px-3 py-2.5 text-[9px] font-black tracking-wider uppercase rounded-xl transition-all duration-300 select-none ${
                             selectedDisciplineCategory === cat
-                              ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
-                              : "text-gray-400 hover:text-white hover:bg-white/5"
+                              ? "bg-slate-900 text-white shadow-md"
+                              : "text-slate-400 hover:text-slate-600 hover:bg-white"
                           }`}
                         >
                           {cat}
@@ -1672,9 +1461,9 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
                         Discipline
                       </label>
                       <select
@@ -1685,7 +1474,7 @@ export default function DashboardPage() {
                             setCustomDiscipline("");
                           }
                         }}
-                        className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white"
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-slate-900 focus:outline-none transition-all text-sm text-slate-900 font-bold"
                         required
                       >
                         <option value="">-- Choisir --</option>
@@ -1700,13 +1489,13 @@ export default function DashboardPage() {
                           placeholder="Ex: 1000m"
                           value={customDiscipline}
                           onChange={(e) => setCustomDiscipline(e.target.value)}
-                          className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600 mt-1"
+                          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-slate-900 focus:outline-none transition-all text-sm text-slate-900 font-bold mt-2"
                           required
                         />
                       )}
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
                         Chrono / Perf
                       </label>
                       <input
@@ -1714,27 +1503,27 @@ export default function DashboardPage() {
                         placeholder="9.98"
                         value={newTemps}
                         onChange={(e) => setNewTemps(e.target.value)}
-                        className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-slate-900 focus:outline-none transition-all text-sm text-slate-900 font-bold"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
                         Date
                       </label>
                       <input
                         type="date"
                         value={newDate}
                         onChange={(e) => setNewDate(e.target.value)}
-                        className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white"
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-slate-900 focus:outline-none transition-all text-sm text-slate-900 font-bold"
                         required
                       />
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
                         Compétition
                       </label>
                       <input
@@ -1742,38 +1531,37 @@ export default function DashboardPage() {
                         placeholder="Championnats"
                         value={newComp}
                         onChange={(e) => setNewComp(e.target.value)}
-                        className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-slate-900 focus:outline-none transition-all text-sm text-slate-900 font-bold"
                       />
                     </div>
                   </div>
 
                   {["Sprint & Haies", "Sauts"].includes(selectedDisciplineCategory) && (
-                    <div className="flex flex-col gap-1 animate-fadeIn">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1 flex justify-between select-none">
-                        <span>Vent (m/s)</span>
-                        <span className="text-[9px] text-gray-600 font-normal lowercase tracking-normal">Optionnel</span>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
+                        Vent (m/s)
                       </label>
                       <input
                         type="text"
                         placeholder="Ex: +1.2 ou -0.5"
                         value={newWind}
                         onChange={(e) => setNewWind(e.target.value)}
-                        className="w-full p-3 bg-neutral-950 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors duration-300 text-xs text-white placeholder-gray-600"
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-slate-900 focus:outline-none transition-all text-sm text-slate-900 font-bold"
                       />
                     </div>
                   )}
 
-                  <div className="flex flex-col gap-2 mt-2">
+                  <div className="flex flex-col gap-3 mt-4 pt-6 border-t border-slate-100">
                     <button
                       type="submit"
-                      className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-wider uppercase rounded-2xl shadow-xl hover:shadow-[0_4px_24px_rgba(16,185,129,0.3)] transition-all duration-300 flex items-center justify-center gap-2"
+                      className="w-full py-5 bg-slate-900 hover:bg-black text-white font-black text-xs tracking-widest uppercase rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3"
                     >
                       🚀 Ajouter Performance
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowAddPerfModal(false)}
-                      className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all"
+                      className="w-full py-4 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-all"
                     >
                       Fermer
                     </button>
@@ -2033,9 +1821,9 @@ export default function DashboardPage() {
                     </div>
 
                     {/* ELITE UPGRADE CARD (Glued to profile) */}
-                    {!isPremium && (
+                    {!isPremium ? (
                       <button
-                        onClick={() => alert("En cours de développement")}
+                        onClick={() => setShowStripeModal(true)}
                         className="relative overflow-hidden w-full p-7 bg-slate-900 text-white rounded-[2.5rem] hover:bg-black transition-all flex items-center justify-between group shadow-lg -mt-4"
                       >
                         <div className="flex items-center gap-5">
@@ -2053,6 +1841,21 @@ export default function DashboardPage() {
                           <div className="absolute inset-0 w-1/3 h-full bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent skew-x-[-25deg] animate-[shimmer_3s_infinite] blur-sm"></div>
                         </div>
                       </button>
+                    ) : (
+                      <div className="relative overflow-hidden w-full p-7 bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 rounded-[2.5rem] flex items-center justify-between shadow-lg -mt-4">
+                        <div className="flex items-center gap-5">
+                          <span className="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center">
+                            <span className="text-2xl">✨</span>
+                          </span>
+                          <div className="flex flex-col items-start text-left">
+                            <span className="text-sm font-black uppercase tracking-widest text-emerald-400">Statut Élite</span>
+                            <span className="text-[10px] text-emerald-600/70 font-bold mt-0.5">Abonnement premium actif</span>
+                          </div>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                          <span className="text-emerald-500 font-black">✓</span>
+                        </div>
+                      </div>
                     )}
 
                     {/* MANAGEMENT GROUP */}
@@ -2464,46 +2267,74 @@ export default function DashboardPage() {
                   <div className="flex flex-col gap-8 animate-slideInRight">
                     <div className="flex flex-col">
                       <span className="text-xs text-emerald-600 font-black uppercase tracking-[0.3em] mb-2">Gestion</span>
-                      <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Sponsors</h3>
+                      <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Sponsors & Partenaires</h3>
                     </div>
 
-                    <div className="bg-white border border-slate-300 rounded-[2.5rem] p-6 flex flex-col gap-6 shadow-sm">
-                      <form onSubmit={handleAddEquipementier} className="flex flex-col gap-4 pb-6 border-b border-slate-100">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Équipementier Principal</label>
-                        <select value={selectedEquip} onChange={(e) => { setSelectedEquip(e.target.value); if (e.target.value !== "Autre") setCustomEquipName(""); }} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-slate-900 font-bold text-sm">
-                          <option value="Aucun">Aucun</option>
-                          {PREDEFINED_EQUIPEMENTIERS.map((eq) => <option key={eq.name} value={eq.name}>{eq.name}</option>)}
-                          <option value="Autre">Autre (personnalisé)</option>
-                        </select>
-                        {selectedEquip === "Autre" && <input type="text" placeholder="Nom..." value={customEquipName} onChange={(e) => setCustomEquipName(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-slate-900 font-bold text-sm" required />}
-                        <button type="submit" className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-900 font-black text-xs uppercase tracking-widest rounded-2xl transition-all">Valider</button>
-                      </form>
-
-                      <form onSubmit={handleAddPartner} className="flex flex-col gap-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ajouter un partenaire</label>
-                        <select value={selectedPartner} onChange={(e) => setSelectedPartner(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-slate-900 font-bold text-sm">
-                          {PREDEFINED_PARTENAIRES.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
-                        </select>
-                        <input type="text" placeholder="Ou personnalisé..." value={customSponsorName} onChange={(e) => setCustomSponsorName(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-slate-900 font-bold text-sm" />
-                        <button type="submit" className="w-full py-5 bg-slate-900 text-white hover:bg-black font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-lg">Ajouter au profil</button>
-                      </form>
-                    </div>
-
-                    <div className="flex flex-col gap-3">
-                      {sponsors.map((sp, i) => (
-                        <div key={sp.id} className="bg-white border border-slate-200 rounded-3xl p-4 flex items-center justify-between shadow-sm">
+                    <div className="bg-white border border-slate-300 rounded-[2.5rem] p-6 flex flex-col gap-8 shadow-sm">
+                      {/* EQUIPEMENTIER SECTION */}
+                      <div className="flex flex-col gap-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Équipementier Principal</label>
+                        <button
+                          type="button"
+                          onClick={() => { setModalMode('equipementier'); setShowEquipModal(true); }}
+                          className="w-full p-5 bg-slate-50 border-2 border-slate-200 rounded-[2rem] flex items-center justify-between hover:border-slate-900 hover:bg-white transition-all group"
+                        >
                           <div className="flex items-center gap-4">
-                            <span className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-xl">{sp.logo}</span>
-                            <div>
-                              <span className="font-black text-sm text-slate-900 block">{sp.name}</span>
-                              <span className="text-[9px] text-emerald-500 font-black uppercase tracking-tight">{sp.category || "Sponsor"}</span>
+                            {selectedEquip !== "Aucun" && selectedEquip !== "Autre" ? (
+                              <div className="w-12 h-12 bg-white rounded-2xl border border-slate-100 p-2 flex items-center justify-center">
+                                <img 
+                                  src={PREDEFINED_EQUIPEMENTIERS.find(e => e.name === selectedEquip)?.logo} 
+                                  alt="" 
+                                  className="max-w-full max-h-full object-contain"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-xl">
+                                {selectedEquip === "Autre" ? "🏢" : "👟"}
+                              </div>
+                            )}
+                            <div className="flex flex-col items-start text-left">
+                              <span className="text-slate-900 font-black text-sm">{selectedEquip === "Aucun" ? "Choisir ma marque" : (selectedEquip === "Autre" ? (customEquipName || "Marque personnalisée") : selectedEquip)}</span>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Équipementier Officiel</span>
                             </div>
                           </div>
-                          <button onClick={() => handleRemoveSponsor(sp.id, i)} className="text-slate-300 hover:text-red-500 transition-colors">
-                            <Trash2 size={18} />
-                          </button>
+                          <div className="w-10 h-10 bg-white rounded-xl border border-slate-200 flex items-center justify-center group-hover:border-slate-900 transition-all">
+                            <span className="text-slate-900 text-lg">→</span>
+                          </div>
+                        </button>
+                      </div>
+
+                      {/* PARTENAIRES SECTION */}
+                      <div className="flex flex-col gap-4 pt-8 border-t border-slate-100">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Partenaires Officiels</label>
+                        <button
+                          type="button"
+                          onClick={() => { setModalMode('partenaire'); setShowEquipModal(true); }}
+                          className="w-full py-5 bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] rounded-[2rem] shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3"
+                        >
+                          <span>+ Ajouter un partenaire</span>
+                        </button>
+
+                        <div className="flex flex-col gap-3 mt-4">
+                          {sponsors.filter(s => s.category !== "Équipementier").map((sp, i) => (
+                            <div key={sp.id} className="bg-slate-50 border border-slate-200 rounded-3xl p-4 flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center overflow-hidden p-1">
+                                  {sp.logo?.startsWith('http') ? (
+                                    <img src={sp.logo} alt="" className="w-full h-full object-contain" />
+                                  ) : (
+                                    <span className="text-lg">{sp.logo || "🤝"}</span>
+                                  )}
+                                </div>
+                                <span className="font-black text-xs text-slate-900 uppercase tracking-tight">{sp.name}</span>
+                              </div>
+                              <button onClick={() => handleRemoveSponsor(sp.id, i)} className="text-slate-300 hover:text-red-500 transition-colors">
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2512,6 +2343,97 @@ export default function DashboardPage() {
           )}
         </AnimatePresence>
 
+        {/* MODALE SELECTION EQUIPEMENTIER */}
+        <AnimatePresence>
+          {showEquipModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[170] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white border border-white rounded-[2.5rem] p-8 shadow-2xl max-w-2xl w-full flex flex-col gap-6 max-h-[90vh] overflow-y-auto"
+              >
+                <div className="flex flex-col select-none">
+                  <span className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.3em] mb-1">
+                    {modalMode === 'equipementier' ? 'Galerie Équipementiers' : 'Galerie Partenaires'}
+                  </span>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none">
+                    {modalMode === 'equipementier' ? 'Choisir ma marque' : 'Ajouter un partenaire'}
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-4 py-4">
+                  {modalMode === 'equipementier' && (
+                    <button
+                      type="button"
+                      onClick={() => { 
+                        setSelectedEquip("Aucun"); 
+                        setCustomEquipName(""); 
+                        setShowEquipModal(false);
+                        // Auto-save logic handled via useEffect or manual call
+                      }}
+                      className={`aspect-square rounded-3xl border-2 flex flex-col items-center justify-center gap-1 transition-all ${selectedEquip === "Aucun" ? "border-slate-900 bg-slate-900 text-white shadow-lg" : "border-slate-100 bg-slate-50 text-slate-400 hover:border-slate-200"}`}
+                    >
+                      <span className="text-2xl font-light">✕</span>
+                      <span className="text-[9px] font-black uppercase tracking-tighter">Aucun</span>
+                    </button>
+                  )}
+
+                  {(modalMode === 'equipementier' ? PREDEFINED_EQUIPEMENTIERS : PREDEFINED_PARTENAIRES).map((item) => (
+                    <button
+                      key={item.name}
+                      type="button"
+                      onClick={async () => { 
+                        if (modalMode === 'equipementier') {
+                          setSelectedEquip(item.name);
+                          setCustomEquipName("");
+                          setShowEquipModal(false);
+                          // Trigger auto-save for Equip
+                          const newSponsor = { id: Date.now().toString(), name: item.name, logo: item.logo, category: "Équipementier" };
+                          const otherSponsors = sponsors.filter(s => s.category !== "Équipementier");
+                          const updatedSponsors = [...otherSponsors, newSponsor];
+                          await supabase.from("profiles").upsert([{ user_id: userId, username: username || "athlete", sponsors: updatedSponsors }], { onConflict: "user_id" });
+                          setSponsors(updatedSponsors);
+                        } else {
+                          // Trigger add for Partner
+                          const newSponsor = { id: Date.now().toString(), name: item.name, logo: item.logo, category: "Partenaire" };
+                          const updatedSponsors = [...sponsors, newSponsor];
+                          await supabase.from("profiles").upsert([{ user_id: userId, username: username || "athlete", sponsors: updatedSponsors }], { onConflict: "user_id" });
+                          setSponsors(updatedSponsors);
+                          setShowEquipModal(false);
+                        }
+                      }}
+                      className="group relative aspect-square rounded-3xl border-2 border-slate-100 bg-white hover:border-slate-900 hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center p-4"
+                    >
+                      <img src={item.logo} alt={item.name} className="max-w-full max-h-full object-contain" />
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => { 
+                      setShowEquipModal(false);
+                      // In partner mode, we could show an input instead
+                      if (modalMode === 'equipementier') setSelectedEquip("Autre");
+                    }}
+                    className="aspect-square rounded-3xl border-2 border-slate-100 bg-slate-50 text-slate-400 hover:border-slate-200 flex flex-col items-center justify-center gap-1 transition-all"
+                  >
+                    <span className="text-2xl font-light">+</span>
+                    <span className="text-[9px] font-black uppercase tracking-tighter">Autre</span>
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setShowEquipModal(false)}
+                  className="w-full py-4 bg-slate-100 text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all"
+                >
+                  Fermer
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+        
         {/* CROP MODAL */}
         <AnimatePresence>
           {showCropModal && imageToCrop && (

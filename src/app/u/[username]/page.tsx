@@ -2,212 +2,46 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { motion, useScroll, useSpring, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { Custom3DChart } from "./CustomChart";
+import { Custom3DChart } from "@/components/CustomChart";
+import { FloatingOrbs, GlassCard, ParallaxSection, SectionTitle, CinemaGallery, CinematicLinksList } from "./ParallaxComponents";
+import { Sponsors3DSection } from "@/components/Sponsors3DSection";
 
-interface Record {
-  distance: string;
-  temps: string;
-  competition: string;
-}
+import { PerformanceRaw, ProcessedDiscipline, SocialLink, Sponsor, Video } from "@/types";
 
-interface SocialLink {
-  title: string;
-  url: string;
-  icon: string;
-}
-
-interface Sponsor {
-  id: string | number;
-  name: string;
-  logo: string;
-  category?: string;
-}
-
-interface Video {
-  id: string | number;
-  url: string;
-  title: string;
-}
-
-interface EvolutionPoint {
-  date: string;
-  "100m": number;
-}
-
-
-export interface PerformanceRaw {
-  id?: string | number;
-  distance: string;
-  temps: string | number;
-  date: string;
-  competition?: string;
-  [key: string]: any;
-}
-
-export interface ProcessedDiscipline {
-  distance: string;
-  records: PerformanceRaw[];
-  firstRecord: PerformanceRaw;
-  bestRecord: PerformanceRaw;
-  improvementTime: string;
-  improvementPercentage: string;
-}
+interface Record { distance: string; temps: string; competition: string; }
+interface EvolutionPoint { date: string; "100m": number; }
 
 export function processPerformances(performances: PerformanceRaw[]): { [key: string]: ProcessedDiscipline } {
   const grouped: { [key: string]: PerformanceRaw[] } = {};
-
-  performances.forEach(perf => {
-    if (!grouped[perf.distance]) {
-      grouped[perf.distance] = [];
-    }
-    grouped[perf.distance].push(perf);
-  });
-
+  performances.forEach(perf => { if (!grouped[perf.distance]) grouped[perf.distance] = []; grouped[perf.distance].push(perf); });
   const result: { [key: string]: ProcessedDiscipline } = {};
-
   for (const [distance, records] of Object.entries(grouped)) {
     const sortedByDate = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const sortedByTime = [...records].sort((a, b) => parseFloat(a.temps.toString()) - parseFloat(b.temps.toString()));
-
-    const firstRecord = sortedByDate[0];
-    const bestRecord = sortedByTime[0];
-
-    const firstTime = parseFloat(firstRecord.temps.toString());
-    const bestTime = parseFloat(bestRecord.temps.toString());
-
+    const firstRecord = sortedByDate[0]; const bestRecord = sortedByTime[0];
+    const firstTime = parseFloat(firstRecord.temps.toString()); const bestTime = parseFloat(bestRecord.temps.toString());
     let improvementTimeVal = bestTime - firstTime;
     let improvementPercentageVal = firstTime > 0 ? (improvementTimeVal / firstTime) * 100 : 0;
-
-    let improvementTime = improvementTimeVal <= 0 ? `${improvementTimeVal.toFixed(2)}s` : `+${improvementTimeVal.toFixed(2)}s`;
-    let improvementPercentage = improvementTimeVal <= 0 ? `${improvementPercentageVal.toFixed(1)}%` : `+${improvementPercentageVal.toFixed(1)}%`;
-
-    result[distance] = {
-      distance,
-      records: sortedByDate,
-      firstRecord,
-      bestRecord,
-      improvementTime,
-      improvementPercentage
+    result[distance] = { distance, records: sortedByDate, firstRecord, bestRecord,
+      improvementTime: improvementTimeVal <= 0 ? `${improvementTimeVal.toFixed(2)}s` : `+${improvementTimeVal.toFixed(2)}s`,
+      improvementPercentage: improvementTimeVal <= 0 ? `${improvementPercentageVal.toFixed(1)}%` : `+${improvementPercentageVal.toFixed(1)}%`
     };
   }
-
   return result;
 }
 
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.12,
-      delayChildren: 0.1,
-    }
-  }
-};
 
-const staggerItem = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 100, damping: 20 } }
-};
-
-const HorizontalCarousel = ({ photos }: { photos: { id: string; url: string; title: string; date?: string }[] }) => {
-  const targetRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-
-  useEffect(() => {
-    // If photos fit within screen, no scroll needed, or calculate exactly how much to scroll
-    // Assuming each photo is ~80vw (max 800px) + gap
-    // We will let framer-motion interpolate up to a sensible value
-    const updateWidth = () => {
-      if (targetRef.current) {
-        // total width of the inner sliding content minus viewport width
-        // A rough estimate: 80vw per photo, gap 32px
-        const viewportWidth = window.innerWidth;
-        const cardWidth = Math.min(viewportWidth * 0.8, 800) + 32;
-        const totalContentWidth = photos.length * cardWidth;
-        // only translate enough to see the last item
-        const maxScroll = Math.max(0, totalContentWidth - viewportWidth);
-        setContainerWidth(maxScroll);
-      }
-    };
-    updateWidth();
-    window.addEventListener('resize', updateWidth);
-    return () => window.removeEventListener('resize', updateWidth);
-  }, [photos]);
-
-  const { scrollYProgress } = useScroll({
-    target: targetRef,
-  });
-
-  // we use a custom spring to make it smoother
-  const smoothProgress = useSpring(scrollYProgress, { stiffness: 100, damping: 20 });
-  const x = useTransform(smoothProgress, [0, 1], [0, -containerWidth]);
-
-  // Adjust section height based on number of photos.
-  // E.g. 1 photo = 100vh (no scroll), 20 photos = maybe 500vh to give enough scroll time
-  const sectionHeight = `${100 + photos.length * 20}vh`;
-
-  return (
-    <section ref={targetRef} className="relative w-full" style={{ height: sectionHeight }}>
-      <div className="sticky top-0 flex h-screen items-center overflow-hidden w-full">
-        <motion.div style={{ x }} className="flex gap-8 px-4 md:px-8">
-          {photos.map((photo, index) => {
-            return (
-              <div
-                key={photo.id || index}
-                className="group relative h-[60vh] w-[80vw] max-w-[800px] flex-shrink-0 overflow-hidden rounded-3xl bg-slate-900 border border-slate-700/50 shadow-2xl [perspective:1000px]"
-              >
-                <motion.div
-                  className="absolute inset-0 w-full h-full"
-                  whileHover={{ rotateY: 5, rotateX: -5, scale: 1.05 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  style={{ transformStyle: "preserve-3d" }}
-                >
-                  <img
-                    src={photo.url}
-                    alt={photo.title}
-                    className="h-full w-full object-contain bg-black pointer-events-none"
-                    loading="lazy"
-                    onError={(e) => e.currentTarget.src = 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=400&q=80'}
-                  />
-                  {/* Gradient Overlay for Text */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
-
-                  {/* Text Details */}
-                  <div
-                    className="absolute bottom-0 left-0 p-6 md:p-10 w-full transform-gpu transition-all duration-300 group-hover:-translate-y-2 [transform:translateZ(50px)]"
-                  >
-                    <h3 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tight shadow-black/50 drop-shadow-md">
-                      {photo.title}
-                    </h3>
-                    {photo.date && (
-                      <p className="text-emerald-400 font-bold text-sm md:text-base mt-2 tracking-widest uppercase drop-shadow-md">
-                        {photo.date}
-                      </p>
-                    )}
-                  </div>
-                </motion.div>
-              </div>
-            );
-          })}
-        </motion.div>
-      </div>
-    </section>
-  );
-};
-
-
+/* ═══════ MAIN PAGE ═══════ */
 export default function PublicAthleteProfile() {
   const params = useParams();
   const username = params?.username as string;
-
+  const heroRef = useRef(null);
   const [mounted, setMounted] = useState(false);
   const [profileNotFound, setProfileNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
-
   const [profileData, setProfileData] = useState<{ full_name?: string; bio?: string; avatar_url?: string; photos?: { id: string; url: string; title: string; date?: string }[] }>({});
   const [records, setRecords] = useState<Record[]>([]);
   const [links, setLinks] = useState<SocialLink[]>([]);
@@ -218,428 +52,304 @@ export default function PublicAthleteProfile() {
   const [selectedDiscipline, setSelectedDiscipline] = useState<string | null>(null);
 
   const { scrollY } = useScroll();
-  const headerY = useTransform(scrollY, [0, 400], [0, 100]);
+  const heroScale = useTransform(scrollY, [0, 600], [1, 1.15]);
+  const heroOpacity = useTransform(scrollY, [0, 400, 600], [1, 0.8, 0]);
+  const nameY = useTransform(scrollY, [0, 600], [0, 150]);
+  const nameOpacity = useTransform(scrollY, [0, 300, 600], [1, 0.6, 0]);
 
   useEffect(() => {
-
     async function fetchAthleteByUsername() {
-      if (!username) {
-        setLoading(false);
-        return;
-      }
-
-
-
-
+      if (!username) { setLoading(false); return; }
       try {
         await supabase.from("views").insert([{ count: 1 }]);
-
-        // Fetch profile
-        const { data: profile, error: profErr } = await supabase
-          .from("profiles")
-          .select("user_id, bio, avatar_url, photos, full_name")
-          .eq("username", username.toLowerCase())
-          .maybeSingle() as any;
-
-        if (profErr || !profile?.user_id) {
-          setProfileNotFound(true);
-          setLoading(false);
-          return;
-        }
-
-        setProfileData({
-          full_name: profile.full_name,
-          bio: profile.bio,
-          avatar_url: profile.avatar_url,
-          photos: profile.photos
-        });
-
+        const { data: profile, error: profErr } = await supabase.from("profiles").select("user_id, bio, avatar_url, full_name").eq("username", username.toLowerCase()).maybeSingle() as any;
+        if (profErr || !profile?.user_id) { setProfileNotFound(true); setLoading(false); return; }
+        
         const uid = profile.user_id;
 
+        // Fetch photo gallery separately
+        const { data: photoData } = await supabase.from("photo_gallery").select("*").eq("user_id", uid);
+        
+        setProfileData({ 
+          full_name: profile.full_name, 
+          bio: profile.bio, 
+          avatar_url: profile.avatar_url, 
+          photos: photoData || [] 
+        });
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         const isOwner = currentUser && currentUser.id === uid;
-
-        // Increment user's specific views_count
         if (!isOwner) {
           try {
             const { error: rpcError } = await supabase.rpc('increment_views', { p_id: uid });
-            if (rpcError) {
-              const { data } = await supabase.from("profiles").select("views_count").eq("user_id", uid).single();
-              if (data) {
-                await supabase.from("profiles").update({ views_count: (data.views_count || 0) + 1 }).eq("user_id", uid);
-              }
-            }
+            if (rpcError) { const { data } = await supabase.from("profiles").select("views_count").eq("user_id", uid).single(); if (data) await supabase.from("profiles").update({ views_count: (data.views_count || 0) + 1 }).eq("user_id", uid); }
           } catch (e) { }
         }
-
-        // Fetch records
-        const { data: perfData, error: perfErr } = await supabase
-          .from("performances")
-          .select("*")
-          .eq("user_id", uid);
-
+        const { data: perfData, error: perfErr } = await supabase.from("performances").select("*").eq("user_id", uid);
         if (!perfErr && perfData && perfData.length > 0) {
-          const mappedRecords = perfData.slice(-2).map((p) => ({
-            distance: p.distance,
-            temps: p.temps + "s",
-            competition: p.competition,
-          }));
-          setRecords(mappedRecords);
-
-          const mappedEvolution = perfData.map((p) => ({
-            date: p.date,
-            "100m": parseFloat(p.temps),
-          }));
-          setEvolution(mappedEvolution);
-
+          setRecords(perfData.slice(-2).map(p => ({ distance: p.distance, temps: p.temps + "s", competition: p.competition })));
+          setEvolution(perfData.map(p => ({ date: p.date, "100m": parseFloat(p.temps) })));
           const processed = processPerformances(perfData);
           setProcessedPerformances(processed);
           const disciplines = Object.keys(processed);
-          if (disciplines.length > 0) {
-            setSelectedDiscipline(disciplines[0]);
-          }
+          if (disciplines.length > 0) setSelectedDiscipline(disciplines[0]);
         }
-
-        // Fetch links
-        const { data: linkData, error: linkErr } = await supabase
-          .from("links")
-          .select("*")
-          .eq("user_id", uid);
+        const { data: linkData, error: linkErr } = await supabase.from("links").select("*").eq("user_id", uid);
         if (!linkErr && linkData) setLinks(linkData);
-
-        // Fetch sponsors
-        const { data: spData, error: spErr } = await supabase
-          .from("sponsors")
-          .select("*")
-          .eq("user_id", uid);
+        const { data: spData, error: spErr } = await supabase.from("sponsors").select("*").eq("user_id", uid);
         if (!spErr && spData) setSponsors(spData);
-
-        // Fetch videos
-        const { data: vidData, error: vidErr } = await supabase
-          .from("videos")
-          .select("*")
-          .eq("user_id", uid);
+        const { data: vidData, error: vidErr } = await supabase.from("videos").select("*").eq("user_id", uid);
         if (!vidErr && vidData) setVideos(vidData);
-
-      } catch (err) {
-        console.error("Fetch profile err:", err);
-      } finally {
-        setMounted(true);
-        setLoading(false);
-      }
+      } catch (err) { console.error("Fetch profile err:", err);
+      } finally { setMounted(true); setLoading(false); }
     }
-
     fetchAthleteByUsername();
   }, [username]);
+
+  // Helper to get high-quality logos for links
+  const getLinkLogo = (url: string) => {
+    try {
+      const domain = new URL(url).hostname.replace("www.", "");
+      if (domain.includes("instagram.com")) return "https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg";
+      if (domain.includes("tiktok.com")) return "https://upload.wikimedia.org/wikipedia/en/a/a9/TikTok_logo.svg";
+      if (domain.includes("youtube.com") || domain.includes("youtu.be")) return "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg";
+      if (domain.includes("twitter.com") || domain.includes("x.com")) return "https://upload.wikimedia.org/wikipedia/commons/5/57/X_logo_2023_%28white%29.svg";
+      if (domain.includes("facebook.com")) return "https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg";
+      
+      // Fallback to high-res favicon service
+      return `https://www.google.com/s2/favicons?sz=128&domain=${domain}`;
+    } catch { return null; }
+  };
 
   const formatEmbedUrl = (url: string) => {
     try {
       if (url.includes("youtube.com") || url.includes("youtu.be")) {
-        const urlObj = new URL(url);
-        let videoId = "";
-        if (url.includes("youtu.be")) {
-          videoId = urlObj.pathname.slice(1);
-        } else {
-          videoId = urlObj.searchParams.get("v") || "";
-        }
+        const urlObj = new URL(url); let videoId = "";
+        if (url.includes("youtu.be")) videoId = urlObj.pathname.slice(1);
+        else videoId = urlObj.searchParams.get("v") || "";
         return `https://www.youtube.com/embed/${videoId}`;
-      }
-      return url;
-    } catch {
-      return url;
-    }
+      } return url;
+    } catch { return url; }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
-        <p className="text-gray-500 text-xs tracking-wider uppercase animate-pulse select-none">
-          Chargement du profil...
-        </p>
+  if (loading) return (
+    <div className="min-h-screen mesh-gradient flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
+        <p className="text-white/20 text-[10px] tracking-[0.4em] uppercase font-bold animate-pulse">Chargement</p>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (profileNotFound) {
-    return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-6 font-sans px-5 text-center select-none">
-        <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 tracking-tight">
-          Athlète non trouvé
-        </h2>
-        <p className="text-gray-400 text-sm max-w-xs leading-relaxed">
-          Le profil que vous cherchez n&apos;existe pas ou a été désactivé.
-        </p>
-        <Link href="/" className="px-6 py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold rounded-xl text-emerald-400 tracking-wide uppercase transition-all duration-300">
-          ← Retour à l&apos;accueil
-        </Link>
-      </div>
-    );
-  }
+  if (profileNotFound) return (
+    <div className="min-h-screen mesh-gradient flex flex-col items-center justify-center gap-6 px-5 text-center">
+      <h2 className="text-3xl font-black text-gradient-neon tracking-tight">Athlète non trouvé</h2>
+      <p className="text-white/30 text-sm max-w-xs">Le profil que vous cherchez n&apos;existe pas ou a été désactivé.</p>
+      <Link href="/" className="px-6 py-3 glass-card rounded-xl text-xs font-bold text-emerald-400 tracking-wide uppercase hover:border-emerald-500/30 transition-all">← Retour</Link>
+    </div>
+  );
 
-  const equipementiers = sponsors.filter((sp) => sp.category === "Équipementier");
-  const partenaires = sponsors.filter((sp) => sp.category === "Partenaire" || !sp.category);
+  const equipementiers = sponsors.filter(sp => sp.category === "Équipementier");
+  const partenaires = sponsors.filter(sp => sp.category === "Partenaire" || !sp.category);
   const galleryPhotos = profileData.photos && profileData.photos.length > 0 ? profileData.photos : [];
 
-
   return (
-    <div className="min-h-screen bg-slate-200 text-slate-900 font-sans selection:bg-emerald-500 selection:text-white">
-      <div className="fixed top-[-10%] left-[-10%] w-[600px] h-[600px] bg-white/60 rounded-full blur-[120px] pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-slate-300/50 rounded-full blur-[120px] pointer-events-none z-0"></div>
+    <div className="visitor-profile min-h-screen mesh-gradient text-white font-sans selection:bg-emerald-500/30 selection:text-white noise-overlay overflow-x-hidden">
+      <FloatingOrbs />
+ 
+      {/* ═══ TOP LOGO ═══ */}
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 z-[100] w-full flex justify-center px-6 pointer-events-none">
+        <motion.img 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.5 }}
+          src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png" 
+          alt="BioAthlete" 
+          className="h-10 md:h-12 object-contain logo-visibility-fix invert" 
+        />
+      </div>
 
-      <div className="relative z-10 flex flex-col items-center min-h-screen w-full max-w-4xl mx-auto px-4 md:px-8">
-
-
-        {/* CONTENU PRINCIPAL */}
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          animate="show"
-          className="w-full flex flex-col gap-16 pb-32 pt-24 select-none"
-        >
-
-
-        {/* MOBILE CENTERED LOGO */}
-        <div className="absolute top-[-10px] left-0 right-0 z-50 pointer-events-none flex justify-center">
-          <img
-            src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png"
-            alt="BioAthlete Logo"
-            className="h-44 object-contain brightness-0 opacity-80"
-          />
-        </div>
-
-          {/* HERO SECTION */}
-          <motion.div
-            variants={staggerItem}
-            className="relative w-full h-[500px] md:h-[600px] overflow-hidden rounded-b-3xl md:rounded-3xl border border-slate-300 group"
-          >
-            <motion.div style={{ y: headerY }} className="absolute inset-0 w-full h-[120%] -top-[10%]">
-              {profileData.avatar_url ? (
-                <img
-                  src={profileData.avatar_url}
-                  alt={username}
-                  className="w-full h-full object-cover object-top select-none"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                  }}
-                />
-              ) : null}
-              <div className={`w-full h-full bg-slate-200 flex flex-col items-center justify-center relative select-none ${profileData.avatar_url ? 'hidden' : ''}`}>
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/40 via-slate-200 to-slate-300 opacity-60"></div>
-                <div className="font-black text-8xl md:text-[120px] tracking-tighter text-slate-400 select-none z-10">
-                  {username?.slice(0, 2).toUpperCase() || "BA"}
-                </div>
-              </div>
-              {/* Gradient Overlay for Text Readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/40 to-transparent"></div>
-            </motion.div>
-
-            {/* Glassmorphism Info Overlay */}
-            <div className="absolute bottom-0 left-0 w-full p-6 md:p-10 flex flex-col gap-2">
-              <div className="flex flex-col gap-1 select-none">
-                <h1 className="text-4xl md:text-6xl font-black tracking-tight text-slate-900 uppercase">
-                  {(profileData.full_name || username).toUpperCase()}
-                </h1>
-                <p className="text-slate-400 text-xs md:text-sm font-bold uppercase tracking-[0.3em] select-none">
-                  Athlète de haut niveau
-                </p>
-              </div>
-              <p className="text-slate-600 text-sm md:text-base max-w-2xl leading-relaxed select-none backdrop-blur-xl bg-white p-4 rounded-2xl border border-slate-300 mt-2">
-                {profileData.bio || "Visant l'excellence à chaque foulée, repoussant les limites de la performance athlétique."}
-              </p>
-
-              {links.length > 0 && (
-                <div className="flex gap-3 mt-4">
-                  {links.map((link, idx) => (
-                    <a
-                      key={idx}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-10 h-10 rounded-full bg-white backdrop-blur-xl border border-slate-300 flex items-center justify-center text-lg hover:bg-slate-100 hover:border-slate-400 hover:text-slate-900 transition-all duration-300"
-                      title={link.title}
-                    >
-                      {link.icon || "🔗"}
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
-          </motion.div>
-
-
-          {/* BENTO GRID SPONSORS */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true, margin: "-10%" }}
-            className="w-full flex flex-col gap-6 select-none"
-          >
-            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 px-2">
-              Partenaires <span className="text-white">&</span> Sponsors
-            </h3>
-
-            {(equipementiers.length === 0 && partenaires.length === 0) ? (
-              <div className="w-full backdrop-blur-xl bg-white border border-slate-300 rounded-3xl p-8 flex flex-col items-center justify-center text-center">
-                <span className="text-4xl mb-4 grayscale opacity-40">🤝</span>
-                <h4 className="text-slate-800 font-black text-lg tracking-wide uppercase mb-2">Espace Sponsoring</h4>
-                <p className="text-slate-500 text-sm max-w-sm">Associez votre marque à l'excellence et soutenez la progression de cet athlète.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                {equipementiers.map((eq, idx) => (
-                  <div key={`eq-${idx}`} className="col-span-2 backdrop-blur-xl bg-white border border-slate-300 hover:border-slate-400 transition-all duration-300 rounded-3xl p-6 md:p-10 flex items-center justify-center relative overflow-hidden group">
-                    <div className="absolute top-4 left-4 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 opacity-60 group-hover:opacity-100 transition-opacity">Équipementier Officiel</div>
-                    <span className="text-5xl md:text-6xl grayscale group-hover:grayscale-0 transition-all duration-500">{eq.logo}</span>
-                  </div>
-                ))}
-
-                {partenaires.map((sp, idx) => (
-                  <div key={`sp-${idx}`} className="col-span-1 backdrop-blur-xl bg-white border border-slate-300 hover:border-slate-400 transition-all duration-300 rounded-3xl p-6 flex items-center justify-center relative group">
-                    <span className="text-3xl md:text-4xl grayscale group-hover:grayscale-0 transition-all duration-300">{sp.logo}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-
-          {galleryPhotos.length > 0 && (
-            <div className="w-full relative z-20">
-              <HorizontalCarousel photos={galleryPhotos} />
+      {/* ═══ HERO CINEMATIC ═══ */}
+      <section ref={heroRef} className="relative w-full h-screen overflow-hidden">
+        {/* Background image with parallax zoom */}
+        <motion.div style={{ scale: heroScale, opacity: heroOpacity }} className="absolute inset-0 w-full h-full">
+          {profileData.avatar_url ? (
+            <img src={profileData.avatar_url} alt={username} className="w-full h-full object-cover object-top" onError={e => { e.currentTarget.style.display = 'none'; }} />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-gray-900 via-black to-gray-800 flex items-center justify-center">
+              <span className="text-[200px] font-black text-white/[0.03] tracking-tighter select-none">{username?.slice(0, 2).toUpperCase()}</span>
             </div>
           )}
+          {/* Cinematic gradient overlays */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#050505]/40 via-transparent to-[#050505]/40" />
+        </motion.div>
 
-          {videos.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true, margin: "-10%" }}
-              className="w-full select-none flex flex-col gap-3"
+        {/* Name with parallax depth */}
+        <motion.div style={{ y: nameY, opacity: nameOpacity }} className="absolute bottom-0 left-0 w-full p-6 md:p-12 z-10">
+          <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}>
+            <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-emerald-400/70 mb-3">Profil Athlète</p>
+            <h1 className="text-5xl md:text-9xl font-black tracking-tighter text-white uppercase leading-[0.8]" style={{ textShadow: '0 0 80px rgba(0,255,136,0.15)' }}>
+              {(profileData.full_name || username).toUpperCase()}
+            </h1>
+          </motion.div>
+
+          {/* Quick Stats Bar - Fills the gap and adds immediate impact */}
+          {records.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5, duration: 1 }}
+              className="flex gap-8 mt-8 py-4 border-y border-white/5 max-w-fit pr-12"
             >
-              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 px-1">
-                Vidéos <span className="text-slate-600">&</span> Médias
-              </h3>
-              <div className="flex flex-col gap-4">
-                {videos.map((vid, idx) => (
-                  <motion.div
-                    key={idx}
-                    whileHover={{ scale: 1.02 }}
-                    className="w-full backdrop-blur-xl bg-white border border-slate-300 rounded-2xl p-3 hover:border-slate-400 transition-all duration-300 select-none overflow-hidden"
-                  >
-                    {vid.title && (
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-2 truncate px-1">
-                        {vid.title}
-                      </p>
+              {records.map((rec, idx) => (
+                <div key={idx} className="flex flex-col">
+                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">{rec.distance}</span>
+                  <span className="text-2xl md:text-3xl font-black text-white italic tracking-tighter">{rec.temps}</span>
+                </div>
+              ))}
+            </motion.div>
+          )}
+
+          {/* Bio */}
+          {profileData.bio && (
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7, duration: 0.8 }}
+              className="text-white/30 text-sm md:text-base max-w-xl leading-relaxed mt-6 font-light">
+              {profileData.bio}
+            </motion.p>
+          )}
+
+        </motion.div>
+
+        {/* Scroll indicator */}
+        <motion.div animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 2 }}
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2">
+          <div className="w-[1px] h-8 bg-gradient-to-b from-transparent to-emerald-500/40" />
+          <span className="text-[8px] text-white/20 uppercase tracking-[0.3em] font-bold">Scroll</span>
+        </motion.div>
+      </section>
+
+      {/* ═══ CONTENT BENTO GRID ═══ */}
+      <div className="relative z-10 w-full max-w-4xl mx-auto px-4 md:px-8 flex flex-col gap-6 pb-32 pt-2">
+        
+        {/* Cinematic Links List - Positioned right after Hero */}
+        <section className="w-full">
+          <CinematicLinksList links={links} getLogo={getLinkLogo} />
+        </section>
+
+        {/* The Bento Section: Sponsors unified */}
+        <section className="flex flex-col gap-4">
+          {/* Brand support slogan - positioned between links and sponsors grid */}
+          {sponsors.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="flex flex-col items-center justify-center gap-2 mb-2"
+            >
+              <div className="h-px w-10 bg-emerald-500/30" />
+              <p className="text-[9px] md:text-xs uppercase tracking-[0.3em] text-white/40 font-black text-center max-w-2xl leading-relaxed">
+                {sponsors.length === 1 ? `${sponsors[0].name} soutient cet athlète` : 
+                 sponsors.length === 2 ? `${sponsors[0].name} et ${sponsors[1].name} soutiennent cet athlète` :
+                 `${sponsors[0].name}, ${sponsors[1].name} et d'autres soutiennent cet athlète`}
+              </p>
+            </motion.div>
+          )}
+
+          <Sponsors3DSection sponsors={sponsors} hideSlogan={true} />
+        </section>
+
+        {/* ═══ GALLERY ═══ */}
+        {galleryPhotos.length > 0 && (
+          <div className="w-full">
+            <SectionTitle accent="Gallery">Moments</SectionTitle>
+            <CinemaGallery photos={galleryPhotos} />
+          </div>
+        )}
+
+        {/* ═══ VIDEOS ═══ */}
+        {videos.length > 0 && (
+          <ParallaxSection className="w-full">
+            <SectionTitle accent="& Médias">Vidéos</SectionTitle>
+            <div className="flex flex-col gap-4">
+              {videos.map((vid, idx) => (
+                <GlassCard key={idx} className="p-4 overflow-hidden">
+                  {vid.title && <p className="text-xs font-bold uppercase tracking-wider text-white/60 mb-3 px-1">{vid.title}</p>}
+                  <div className="w-full rounded-2xl overflow-hidden border border-white/5">
+                    {vid.url.includes("youtube.com") || vid.url.includes("youtu.be") || vid.url.includes("vimeo") ? (
+                      <iframe src={formatEmbedUrl(vid.url)} title={vid.title} className="w-full h-48 md:h-64 border-none" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen loading="lazy" />
+                    ) : (
+                      <video src={vid.url} controls controlsList="nodownload" className="w-full max-h-64 object-contain bg-black" preload="metadata" />
                     )}
-                    <div className="w-full rounded-xl border border-slate-200 overflow-hidden bg-slate-100 flex items-center justify-center">
-                      {vid.url.includes("youtube.com") || vid.url.includes("youtu.be") || vid.url.includes("vimeo") ? (
-                        <iframe
-                          src={formatEmbedUrl(vid.url)}
-                          title={vid.title}
-                          className="w-full h-44 border-none select-none"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          loading="lazy"
-                        />
-                      ) : (
-                        <video
-                          src={vid.url}
-                          controls
-                          controlsList="nodownload"
-                          className="w-full max-h-64 object-contain"
-                          preload="metadata"
-                        />
-                      )}
-                    </div>
-                  </motion.div>
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+          </ParallaxSection>
+        )}
+
+
+        {/* ═══ PERFORMANCES ═══ */}
+        {Object.keys(processedPerformances).length > 0 && selectedDiscipline && processedPerformances[selectedDiscipline] && (
+          <ParallaxSection className="w-full">
+            <SectionTitle accent="Analytics">Performances</SectionTitle>
+
+            {/* Discipline tabs */}
+            <div className="w-full overflow-x-auto pb-3 scrollbar-none mb-6">
+              <div className="flex gap-2">
+                {Object.keys(processedPerformances).map(disc => (
+                  <button key={disc} onClick={() => setSelectedDiscipline(disc)}
+                    className={`px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.15em] whitespace-nowrap transition-all duration-500 cursor-pointer ${
+                      selectedDiscipline === disc
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_30px_rgba(0,255,136,0.1)]"
+                        : "glass-card text-white/30 hover:text-white/60"
+                    }`}>
+                    {disc}
+                  </button>
                 ))}
               </div>
-            </motion.div>
-          )}
+            </div>
 
-          {Object.keys(processedPerformances).length > 0 && selectedDiscipline && processedPerformances[selectedDiscipline] && (
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true, margin: "-10%" }}
-              className="w-full flex flex-col gap-6 select-none"
-            >
-              {/* TABS FOR DISCIPLINES */}
-              <div className="w-full overflow-x-auto pb-2 scrollbar-none snap-x">
-                <div className="flex gap-2">
-                  {Object.keys(processedPerformances).map((disc) => (
-                    <button
-                      key={disc}
-                      onClick={() => setSelectedDiscipline(disc)}
-                      className={`snap-center px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap transition-all duration-500 ${selectedDiscipline === disc
-                        ? "bg-slate-900 text-white scale-105"
-                        : "bg-white text-slate-500 border border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-                        }`}
-                    >
-                      {disc}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* PB CARD */}
-              <motion.div
-                key={selectedDiscipline}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="backdrop-blur-xl bg-white border border-slate-300 rounded-3xl p-6 md:p-8 flex flex-col items-center justify-center relative overflow-hidden"
-              >
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent"></div>
-
-                <div className="text-slate-400 font-black text-[10px] tracking-[0.3em] uppercase mb-4">Record Personnel</div>
-
-                <div className="text-6xl md:text-8xl font-black text-slate-900 tracking-tighter">
-                  {processedPerformances[selectedDiscipline].bestRecord.temps}
-                  <span className="text-2xl md:text-3xl text-slate-400 ml-1">s</span>
-                </div>
-
-                <div className="mt-8 flex flex-col items-center gap-1 text-center">
-                  <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
-                    <span className="text-emerald-500 text-[10px] font-black tracking-[0.2em] uppercase">
-                      {processedPerformances[selectedDiscipline].improvementPercentage} D'ÉVOLUTION
-                    </span>
+            {/* Performance card */}
+            <motion.div key={selectedDiscipline} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+              <GlassCard glow className="overflow-hidden">
+                {/* PB Section */}
+                <div className="p-8 md:p-14 flex flex-col items-center justify-center border-b border-white/5 relative">
+                  {/* Glow behind number */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-emerald-500/[0.04] rounded-full blur-[80px] pointer-events-none" />
+                  <span className="text-white/20 font-black text-[10px] tracking-[0.4em] uppercase mb-8 relative z-10">Record Personnel</span>
+                  <div className="text-7xl md:text-9xl font-black text-white tracking-tighter flex items-baseline relative z-10" style={{ textShadow: '0 0 60px rgba(0,255,136,0.08)' }}>
+                    {processedPerformances[selectedDiscipline].bestRecord.temps}
+                    <span className="text-2xl md:text-4xl text-white/15 ml-2 font-bold">s</span>
                   </div>
-
-                  {processedPerformances[selectedDiscipline].bestRecord.competition && (
-                    <div className="text-slate-400 text-xs font-medium uppercase tracking-wider mt-2">
-                      {processedPerformances[selectedDiscipline].bestRecord.competition}
+                  <div className="mt-8 relative z-10">
+                    <div className="flex items-center gap-3 px-5 py-2.5 rounded-full border border-emerald-500/20 bg-emerald-500/5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" style={{ animation: "subtlePulse 2s ease-in-out infinite" }} />
+                      <span className="text-emerald-400/80 text-[10px] font-black tracking-[0.2em] uppercase">
+                        {processedPerformances[selectedDiscipline].improvementPercentage} d&apos;évolution
+                      </span>
                     </div>
-                  )}
-                  <div className="text-slate-500 text-[10px] mt-1">
-                    {new Date(processedPerformances[selectedDiscipline].bestRecord.date).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' })}
                   </div>
                 </div>
-              </motion.div>
 
-              {/* CUSTOM 3D CHART */}
-              {mounted && processedPerformances[selectedDiscipline].records.length > 0 && (
-                <Custom3DChart records={processedPerformances[selectedDiscipline].records} />
-              )}
+                {/* Chart */}
+                {mounted && processedPerformances[selectedDiscipline].records.length > 0 && (
+                  <div className="p-3 md:p-6 bg-white/[0.01]">
+                    <Custom3DChart records={processedPerformances[selectedDiscipline].records} isEmbedded={true} />
+                  </div>
+                )}
+              </GlassCard>
             </motion.div>
-          )}
+          </ParallaxSection>
+        )}
 
-
-
-          <motion.div variants={staggerItem} className="w-full">
-            <footer className="text-center mt-6 select-none">
-              <p className="text-[10px] text-gray-600 font-medium uppercase tracking-widest flex items-center justify-center gap-1">
-                Optimisé par <span className="text-[#00FF88]/80 font-bold">BioAthlete.space</span>
-              </p>
-            </footer>
-          </motion.div>
-
-
-
+        {/* ═══ FOOTER ═══ */}
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="w-full pt-12">
+          <div className="h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent mb-8" />
+          <footer className="text-center">
+            <p className="text-[9px] text-white/15 font-medium uppercase tracking-[0.3em] flex items-center justify-center gap-2">
+              Optimisé par <span className="text-gradient-neon font-bold">BioAthlete.space</span>
+            </p>
+          </footer>
         </motion.div>
       </div>
     </div>
