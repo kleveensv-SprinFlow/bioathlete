@@ -281,9 +281,15 @@ export default function PublicAthleteProfile() {
       </div>
 
       {/* ═══ HERO CINEMATIC ═══ */}
-      <section ref={heroRef} className="relative w-full h-screen overflow-hidden">
-        {/* Background image with parallax zoom */}
-        <motion.div style={{ scale: heroScale, opacity: heroOpacity }} className="absolute inset-0 w-full h-full">
+      <section ref={heroRef} className="relative w-full h-screen overflow-hidden flex justify-center pt-20">
+        {/* Background image with Pill-to-Hero reveal animation */}
+        <motion.div 
+          initial={{ width: '150px', height: '60px', borderRadius: '100px', opacity: 0, y: 20 }}
+          animate={{ width: '100%', height: '500px', borderRadius: '24px', opacity: 1, y: 0 }}
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+          style={{ scale: heroScale, opacity: heroOpacity }} 
+          className="relative overflow-hidden z-0 shadow-2xl"
+        >
           {profileData.avatar_url ? (
             <img src={profileData.avatar_url} alt={username} className="w-full h-full object-cover object-top" onError={e => { e.currentTarget.style.display = 'none'; }} />
           ) : (
