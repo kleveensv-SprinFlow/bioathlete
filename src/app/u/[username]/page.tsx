@@ -42,7 +42,13 @@ export default function PublicAthleteProfile() {
   const [mounted, setMounted] = useState(false);
   const [profileNotFound, setProfileNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [profileData, setProfileData] = useState<{ full_name?: string; bio?: string; avatar_url?: string; photos?: { id: string; url: string; title: string; date?: string }[] }>({});
+  const [profileData, setProfileData] = useState<{ 
+    full_name?: string; 
+    bio?: string; 
+    avatar_url?: string; 
+    email?: string;
+    photos?: { id: string; url: string; title: string; date?: string }[] 
+  }>({});
   const [records, setRecords] = useState<Record[]>([]);
   const [links, setLinks] = useState<SocialLink[]>([]);
   const [evolution, setEvolution] = useState<EvolutionPoint[]>([]);
@@ -300,12 +306,45 @@ export default function PublicAthleteProfile() {
 
         {/* The Bento Section: Sponsors unified */}
         <section className="flex flex-col gap-4">
-          <Sponsors3DSection 
-            title="Sponsors & Partenaires"
-            sponsors={sponsors} 
-            athleteName={profileData.full_name || username}
-            athleteEmail={profileData.email}
-          />
+          {/* Brand support slogan - positioned between links and sponsors grid */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex flex-col items-center justify-center gap-4 mb-6"
+          >
+            {sponsors.length > 0 ? (
+              <div className="px-6 py-3 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md shadow-xl flex flex-col items-center gap-2">
+                <div className="h-px w-8 bg-emerald-500/30" />
+                <p className="text-[10px] md:text-xs uppercase tracking-[0.4em] text-white/60 font-black text-center max-w-2xl leading-relaxed">
+                  Marques en collaboration avec cet athlète
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-6 p-10 rounded-[32px] bg-gradient-to-b from-white/[0.05] to-transparent border border-white/10 backdrop-blur-xl shadow-2xl w-full max-w-xl mx-auto">
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <span className="text-emerald-400 text-xs font-black uppercase tracking-[0.3em]">Opportunité</span>
+                  <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight text-balance">Aucun sponsor pour le moment</h3>
+                  <p className="text-white/40 text-xs md:text-sm font-medium max-w-xs leading-relaxed">
+                    Vous souhaitez devenir partenaire et soutenir le parcours de cet athlète ?
+                  </p>
+                </div>
+                
+                <a 
+                  href={`mailto:${profileData.email || ''}?subject=Collaboration avec ${profileData.full_name || username}&body=Bonjour, je souhaiterais collaborer avec vous...`}
+                  className="group relative px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs tracking-widest uppercase rounded-2xl shadow-[0_10px_30px_rgba(16,185,129,0.3)] transition-all duration-500 hover:scale-[1.02] flex items-center gap-3 overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                  <span>Collaborer avec cet athlète</span>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </a>
+              </div>
+            )}
+          </motion.div>
+
+          <Sponsors3DSection sponsors={sponsors} hideSlogan={true} />
         </section>
 
         {/* ═══ GALLERY ═══ */}

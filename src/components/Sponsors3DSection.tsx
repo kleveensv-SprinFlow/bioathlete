@@ -2,102 +2,147 @@
 
 import React, { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { GlassCard, SectionTitle } from "./ParallaxComponents";
+import { GlassCard, ParallaxSection, SectionTitle } from "./ParallaxComponents";
 import { Sponsor } from "@/types";
 
-interface Sponsors3DSectionProps {
-  title: string;
+interface Props {
   sponsors: Sponsor[];
+  showTitle?: boolean;
   hideSlogan?: boolean;
-  athleteName?: string;
-  athleteEmail?: string;
 }
 
-export const Sponsors3DSection: React.FC<Sponsors3DSectionProps> = ({ 
-  title, 
-  sponsors, 
-  hideSlogan = false,
-  athleteName = "cet athlète",
-  athleteEmail
-}) => {
+export function Sponsors3DSection({ sponsors, showTitle = false, hideSlogan = false }: Props) {
   const containerRef = useRef(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start end", "end start"]
   });
 
-  // Cinematic parallax values
-  const rotateX = useTransform(scrollYProgress, [0, 0.5, 1], [15, 0, -15]);
-  const y = useTransform(scrollYProgress, [0, 1], [40, -40]);
+  // Nike-style intense parallax values
+  const rotateX = useTransform(scrollYProgress, [0, 0.5, 1], [25, 0, -25]);
+  const y = useTransform(scrollYProgress, [0, 0.5, 1], [80, 0, -80]);
   const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [0.85, 1, 0.85]);
+
+  if (!sponsors || sponsors.length === 0) {
+    return (
+      <div className="w-full py-8 perspective-[2000px]">
+        {showTitle && <SectionTitle accent="& Partners">Sponsors</SectionTitle>}
+        <motion.div 
+          initial={{ opacity: 0, rotateX: 20, y: 50 }}
+          whileInView={{ opacity: 1, rotateX: 0, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ type: "spring", stiffness: 100, damping: 20, duration: 1.2 }}
+          className="w-full rounded-[2.5rem] p-12 md:p-20 flex flex-col items-center justify-center text-center relative overflow-hidden group"
+          style={{
+             background: 'rgba(255,255,255,0.01)',
+             backdropFilter: 'blur(30px)',
+             border: '1px solid rgba(255,255,255,0.03)',
+             boxShadow: '0 30px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
+             transformStyle: 'preserve-3d'
+          }}
+        >
+          {/* Animated gradient mesh background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-[1.5s]" />
+          
+          <motion.span 
+            initial={{ scale: 0.8, opacity: 0 }}
+            whileInView={{ scale: 1, opacity: 0.4 }}
+            transition={{ delay: 0.2, duration: 1 }}
+            className="text-5xl md:text-7xl mb-6 drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+            style={{ transform: 'translateZ(40px)' }}
+          >🤝</motion.span>
+          
+          <h4 className="font-black text-2xl md:text-3xl tracking-tighter uppercase mb-4 text-white drop-shadow-md" style={{ transform: 'translateZ(30px)' }}>
+            Aucun soutien officiel
+          </h4>
+          
+          <p className="text-sm md:text-base max-w-lg leading-relaxed font-light text-white/50 mb-10" style={{ transform: 'translateZ(20px)' }}>
+            Cet athlète n'a pas encore de partenaire officiel. Devenez le premier à associer votre image à ses futures victoires.
+          </p>
+          
+          <motion.a 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            href="mailto:contact@bioathlete.space?subject=Demande%20de%20partenariat" 
+            className="relative px-8 py-4 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs overflow-hidden group/btn"
+            style={{ transform: 'translateZ(50px)' }}
+          >
+            <span className="relative z-10">Proposer un soutien</span>
+            <div className="absolute inset-0 bg-emerald-500/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300 ease-out" />
+          </motion.a>
+        </motion.div>
+      </div>
+    );
+  }
+
+  const getSponsorsText = () => {
+    if (sponsors.length === 1) return `${sponsors[0].name} soutient cet athlète`;
+    if (sponsors.length === 2) return `${sponsors[0].name} et ${sponsors[1].name} soutiennent cet athlète`;
+    
+    const names = sponsors.map(s => s.name);
+    const last = names.pop();
+    return `${names.join(", ")} et ${last} soutiennent cet athlète`;
+  };
 
   return (
-    <div ref={containerRef} className="w-full relative perspective-[2000px] py-12 select-none">
-      <div className="flex items-center gap-4 mb-10 w-full max-w-md mx-auto">
-        <div className="h-[1px] flex-grow bg-gradient-to-r from-transparent to-emerald-500/30" />
-        <h2 className="text-[10px] font-bold uppercase tracking-[0.5em] text-white/50 whitespace-nowrap px-4 italic">
-          {title}
-        </h2>
-        <div className="h-[1px] flex-grow bg-gradient-to-l from-transparent to-emerald-500/30" />
-      </div>
+    <div ref={containerRef} className={`w-full relative perspective-[2500px] ${hideSlogan ? 'pt-0 pb-12' : 'py-12'} select-none`}>
+      {showTitle && <SectionTitle accent="& Partners">Sponsors</SectionTitle>}
+      
+      {!hideSlogan && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mb-12 flex flex-col items-center justify-center gap-3"
+        >
+          <div className="h-px w-12 bg-emerald-500/50" />
+          <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-white/60 font-black text-center max-w-2xl leading-relaxed">
+            {getSponsorsText()}
+          </p>
+        </motion.div>
+      )}
 
       <motion.div
-        style={{ rotateX, y, opacity, transformStyle: 'preserve-3d' }}
-        className="w-full flex flex-col items-center gap-12"
+        style={{ rotateX, y, opacity, scale, transformStyle: 'preserve-3d' }}
+        className="w-full grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 items-stretch"
       >
-        {sponsors && sponsors.length > 0 ? (
-          <>
-            <div className="flex flex-wrap justify-center gap-8 md:gap-16 w-full">
-              {sponsors.map((sp, idx) => (
-                <div key={`sp-${idx}`} className="group relative flex flex-col items-center">
-                  <motion.div 
-                    whileHover={{ y: -10, scale: 1.05 }}
-                    className="relative flex items-center justify-center p-6 md:p-8 rounded-[2rem] bg-white/[0.02] border border-white/[0.05] backdrop-blur-xl transition-all duration-500 hover:border-emerald-500/20 hover:bg-emerald-500/5"
-                  >
-                    <img 
-                      src={sp.logo} 
-                      alt={sp.name} 
-                      className="h-10 md:h-14 w-auto object-contain grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700 logo-visibility-fix" 
-                    />
-                  </motion.div>
-                  <span className="mt-4 text-[9px] uppercase tracking-[0.3em] font-black text-white/20 group-hover:text-emerald-400 transition-colors duration-500">
-                    {sp.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {!hideSlogan && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                className="px-8 py-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 backdrop-blur-md"
-              >
-                <p className="text-[9px] md:text-[10px] uppercase tracking-[0.4em] text-white/40 font-bold">
-                  Marque en collaboration avec <span className="text-emerald-400">{athleteName}</span>
-                </p>
-              </motion.div>
-            )}
-          </>
-        ) : (
-          <motion.a
-            whileHover={{ scale: 1.02, y: -5 }}
-            whileTap={{ scale: 0.98 }}
-            href={athleteEmail ? `mailto:${athleteEmail}?subject=Proposition de collaboration via BioAthlete` : "#"}
-            className="group relative flex flex-col items-center gap-6 p-10 md:p-16 rounded-[3rem] border border-white/5 bg-white/[0.02] backdrop-blur-2xl hover:border-emerald-500/30 transition-all duration-700"
+        {sponsors.map((sp, idx) => (
+          <GlassCard
+            key={`sp-${idx}`}
+            glow
+            className="col-span-1 p-8 md:p-12 flex flex-col items-center justify-center min-h-[180px] md:min-h-[240px] transition-all duration-[0.8s] hover:translate-y-[-15px] hover:scale-[1.03] hover:shadow-[0_40px_80px_rgba(0,0,0,0.6)] group"
+            style={{ 
+              transformStyle: 'preserve-3d',
+              background: 'rgba(255,255,255,0.015)'
+            }}
           >
-            <div className="absolute inset-0 bg-emerald-500/5 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-            <div className="text-4xl opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">🤝</div>
-            <div className="flex flex-col items-center gap-2">
-              <span className="text-xs md:text-sm font-black text-white uppercase tracking-tighter">Collaborer avec {athleteName}</span>
-              <span className="text-[9px] text-white/30 uppercase tracking-[0.2em] font-medium italic">Devenir un partenaire officiel</span>
+            {/* Cinematic light sweep effect on hover */}
+            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-[1.5s] ease-in-out bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12" />
+            
+            <div className="relative z-10 flex items-center justify-center mb-4 transition-transform duration-700 group-hover:translate-z-[50px]" style={{ transform: 'translateZ(30px)' }}>
+              {sp.logo?.startsWith('http') ? (
+                <img 
+                  src={sp.logo} 
+                  alt={sp.name} 
+                  className="h-14 md:h-20 w-auto object-contain logo-visibility-fix transition-all duration-700 drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] group-hover:drop-shadow-[0_20px_40px_rgba(16,185,129,0.2)]" 
+                />
+              ) : (
+                <span className="text-5xl md:text-6xl drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] group-hover:drop-shadow-[0_20px_40px_rgba(16,185,129,0.2)] transition-all duration-700">
+                  {sp.logo}
+                </span>
+              )}
             </div>
-            <div className="px-6 py-2 rounded-full border border-emerald-500/20 text-emerald-400 text-[8px] font-bold uppercase tracking-widest group-hover:bg-emerald-500 group-hover:text-black transition-all">
-              Envoyer une proposition
+            
+            {/* Brand name permanently visible */}
+            <div className="absolute bottom-6 left-0 w-full text-center transition-all duration-500" style={{ transform: 'translateZ(20px)' }}>
+              <span className="text-[10px] uppercase tracking-[0.3em] font-black text-white/40 group-hover:text-emerald-400 transition-colors duration-500 drop-shadow-md">
+                {sp.name}
+              </span>
             </div>
-          </motion.a>
-        )}
+          </GlassCard>
+        ))}
       </motion.div>
     </div>
   );
-};
+}

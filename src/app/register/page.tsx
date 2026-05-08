@@ -117,6 +117,7 @@ export default function RegisterPage() {
             user_id: response.data.user.id,
             username: generatedUsername,
             full_name: `${formData.firstName} ${formData.lastName}`,
+            email: formData.email.trim(),
             bio: bio,
             is_premium: false,
           },
