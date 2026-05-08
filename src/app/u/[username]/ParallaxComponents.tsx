@@ -60,74 +60,142 @@ export function SectionTitle({ children, accent }: { children: React.ReactNode; 
   );
 }
 
-// Horizontal scroll gallery — uses viewport scroll (no target ref) to avoid hydration error
+// 3D Cinematic Carousel with infinite loop and navigation buttons
 export function CinemaGallery({ photos }: { photos: { id: string; url: string; title: string; date?: string }[] }) {
-  const [mounted, setMounted] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState(0);
 
-  useEffect(() => { setMounted(true); }, []);
+  if (!photos || photos.length === 0) return null;
 
-  if (photos.length === 0) return null;
+  const nextPhoto = () => {
+    setDirection(1);
+    setIndex((prev) => (prev + 1) % photos.length);
+  };
 
-  // Fallback: simple horizontal scroll if not enough photos for parallax
-  if (photos.length <= 1 || !mounted) {
-    return (
-      <div className="flex gap-6 overflow-x-auto scrollbar-none pb-4">
-        {photos.map((photo, i) => (
-          <div key={photo.id || i} className="group relative h-[50vh] w-[85vw] max-w-[700px] flex-shrink-0 rounded-3xl overflow-hidden border border-white/5">
-            <img src={photo.url} alt={photo.title} className="h-full w-full object-cover" loading="lazy"
-              onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80'; }} />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-            <div className="absolute bottom-0 left-0 p-8 w-full">
-              <h3 className="text-2xl font-black text-white uppercase tracking-tight">{photo.title}</h3>
-              {photo.date && <p className="text-emerald-400/80 text-xs font-bold mt-2 tracking-widest uppercase">{photo.date}</p>}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const prevPhoto = () => {
+    setDirection(-1);
+    setIndex((prev) => (prev - 1 + photos.length) % photos.length);
+  };
 
-  return <CinemaGalleryInner photos={photos} />;
-}
-
-// Inner component: only rendered after mount so ref is guaranteed hydrated
-function CinemaGalleryInner({ photos }: { photos: { id: string; url: string; title: string; date?: string }[] }) {
-  const targetRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: targetRef, offset: ["start start", "end end"] });
-  const smoothProgress = useSpring(scrollYProgress, { stiffness: 80, damping: 25 });
-
-  const viewportCards = photos.length;
-  const sectionHeight = `${100 + viewportCards * 25}vh`;
-  const x = useTransform(smoothProgress, [0, 1], ["0%", `${-(viewportCards - 1) * 85}%`]);
+  const variants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 300 : -300,
+      opacity: 0,
+      scale: 0.8,
+      rotateY: direction > 0 ? 45 : -45,
+      filter: "blur(10px)",
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      scale: 1,
+      rotateY: 0,
+      filter: "blur(0px)",
+      zIndex: 1,
+    },
+    exit: (direction: number) => ({
+      x: direction < 0 ? 300 : -300,
+      opacity: 0,
+      scale: 0.8,
+      rotateY: direction < 0 ? 45 : -45,
+      filter: "blur(10px)",
+      zIndex: 0,
+    }),
+  };
 
   return (
-    <section ref={targetRef} className="relative w-full" style={{ height: sectionHeight }}>
-      <div className="sticky top-0 flex h-screen items-center overflow-hidden">
-        <motion.div style={{ x }} className="flex gap-6 pl-[5vw]">
-          {photos.map((photo, i) => (
-            <motion.div
-              key={photo.id || i}
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="group relative h-[65vh] w-[80vw] max-w-[750px] flex-shrink-0 rounded-3xl overflow-hidden border border-white/5"
+    <div className="relative w-full py-10 perspective-[1200px] overflow-hidden">
+      <div className="relative h-[60vh] md:h-[70vh] w-full flex items-center justify-center">
+        <AnimatePresence initial={false} custom={direction} mode="popLayout">
+          <motion.div
+            key={index}
+            custom={direction}
+            variants={variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{
+              x: { type: "spring", stiffness: 300, damping: 30 },
+              opacity: { duration: 0.4 },
+              scale: { duration: 0.6 },
+              rotateY: { duration: 0.6 },
+            }}
+            className="absolute h-full w-[90vw] max-w-[800px] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] group"
+          >
+            <img 
+              src={photos[index].url} 
+              alt={photos[index].title}
+              className="h-full w-full object-cover transition-transform duration-[1.5s] group-hover:scale-105"
+              onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80'; }}
+            />
+            {/* Cinematic overlays */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40" />
+            
+            {/* Info overlay */}
+            <div className="absolute bottom-0 left-0 p-8 md:p-12 w-full">
+              <motion.h3 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-2xl md:text-4xl font-black text-white uppercase tracking-tighter"
+              >
+                {photos[index].title}
+              </motion.h3>
+              {photos[index].date && (
+                <motion.p 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="text-emerald-400 font-black text-[10px] md:text-xs mt-3 tracking-[0.3em] uppercase"
+                >
+                  {photos[index].date}
+                </motion.p>
+              )}
+            </div>
+
+            {/* Accent corner glow */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Navigation Buttons */}
+        {photos.length > 1 && (
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-4 md:px-12 z-20 pointer-events-none">
+            <motion.button
+              whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
+              whileTap={{ scale: 0.9 }}
+              onClick={prevPhoto}
+              className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white pointer-events-auto shadow-2xl transition-all cursor-pointer"
             >
-              <img src={photo.url} alt={photo.title}
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                loading="lazy"
-                onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80'; }} />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 p-8 w-full">
-                <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">{photo.title}</h3>
-                {photo.date && <p className="text-emerald-400/80 text-xs font-bold mt-2 tracking-widest uppercase">{photo.date}</p>}
-              </div>
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-            </motion.div>
-          ))}
-        </motion.div>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6"/>
+              </svg>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
+              whileTap={{ scale: 0.9 }}
+              onClick={nextPhoto}
+              className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white pointer-events-auto shadow-2xl transition-all cursor-pointer"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </motion.button>
+          </div>
+        )}
       </div>
-    </section>
+
+      {/* Pagination dots */}
+      <div className="flex justify-center gap-2 mt-8">
+        {photos.map((_, i) => (
+          <div 
+            key={i} 
+            className={`h-1 transition-all duration-500 rounded-full ${i === index ? "w-8 bg-emerald-500" : "w-2 bg-white/10"}`}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
