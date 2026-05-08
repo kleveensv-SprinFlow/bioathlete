@@ -225,6 +225,12 @@ export default function PublicAthleteProfile() {
         <div className="absolute inset-0 bg-black/30" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/60 via-transparent to-[#050505]/60" />
       </div>
+      {/* ═══ TOP PROGRESS BAR ═══ */}
+      <motion.div 
+        className="fixed top-0 left-0 right-0 h-[2px] bg-emerald-500/50 z-[1000] origin-left"
+        style={{ scaleX: scrollYProgress }}
+      />
+
       <div className="absolute top-10 left-1/2 -translate-x-1/2 z-[100] w-full flex justify-center px-6 pointer-events-none">
         <motion.img 
           initial={{ opacity: 0, y: -20 }}
@@ -232,7 +238,7 @@ export default function PublicAthleteProfile() {
           transition={{ duration: 1, delay: 0.5 }}
           src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/Logo/bioathlete_logo_transparent.png" 
           alt="BioAthlete" 
-          className="h-10 md:h-12 object-contain logo-visibility-fix invert" 
+          className="h-24 md:h-32 object-contain logo-visibility-fix invert opacity-80" 
         />
       </div>
 
@@ -261,39 +267,16 @@ export default function PublicAthleteProfile() {
             </h1>
           </motion.div>
 
-          {/* Quick Stats Bar - Fills the gap and adds immediate impact */}
-          {records.length > 0 && (
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5, duration: 1 }}
-              className="flex gap-8 mt-8 py-4 border-y border-white/5 max-w-fit pr-12"
-            >
-              {records.map((rec, idx) => (
-                <div key={idx} className="flex flex-col">
-                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">{rec.distance}</span>
-                  <span className="text-2xl md:text-3xl font-black text-white italic tracking-tighter">{rec.temps}</span>
-                </div>
-              ))}
-            </motion.div>
-          )}
-
           {/* Bio */}
           {profileData.bio && (
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7, duration: 0.8 }}
-              className="text-white/30 text-sm md:text-base max-w-xl leading-relaxed mt-6 font-light">
+              className="text-white/30 text-sm md:text-base max-w-xl leading-relaxed mt-10 font-light">
               {profileData.bio}
             </motion.p>
           )}
 
         </motion.div>
 
-        {/* Scroll indicator */}
-        <motion.div animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 2 }}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2">
-          <div className="w-[1px] h-8 bg-gradient-to-b from-transparent to-emerald-500/40" />
-          <span className="text-[8px] text-white/20 uppercase tracking-[0.3em] font-bold">Scroll</span>
-        </motion.div>
       </section>
 
       {/* ═══ CONTENT BENTO GRID ═══ */}
