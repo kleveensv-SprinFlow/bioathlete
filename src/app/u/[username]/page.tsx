@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Custom3DChart } from "@/components/CustomChart";
@@ -56,6 +56,34 @@ export default function PublicAthleteProfile() {
   const heroOpacity = useTransform(scrollY, [0, 400, 600], [1, 0.8, 0]);
   const nameY = useTransform(scrollY, [0, 600], [0, 150]);
   const nameOpacity = useTransform(scrollY, [0, 300, 600], [1, 0.6, 0]);
+  const videoY = useTransform(scrollY, [0, 3000], [0, -300]);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const { scrollYProgress } = useScroll();
+
+  // Sync video playback with scroll (Apple-style cinematic scrubbing)
+  useMotionValueEvent(scrollYProgress, "change", (latest) => {
+    const video = videoRef.current;
+    if (!video || isNaN(video.duration) || video.duration === 0) return;
+
+    // We map the entire page scroll (0 to 1) directly to the video duration
+    // But we only start advancing the video after scrolling past the first 15% (hero section)
+    let progress = 0;
+    if (latest > 0.15) {
+      progress = (latest - 0.15) / 0.85;
+    }
+    progress = Math.max(0, Math.min(1, progress));
+
+    // Use requestAnimationFrame for fluid updates
+    requestAnimationFrame(() => {
+      // Ensuring video is paused and updating current time
+      if (!video.paused) video.pause();
+      // Only set if changed to avoid unnecessary DOM updates
+      const targetTime = video.duration * progress;
+      if (Math.abs(video.currentTime - targetTime) > 0.05) {
+        video.currentTime = targetTime;
+      }
+    });
+  });
 
   useEffect(() => {
     async function fetchAthleteByUsername() {
@@ -156,7 +184,24 @@ export default function PublicAthleteProfile() {
     <div className="visitor-profile min-h-screen mesh-gradient text-white font-sans selection:bg-emerald-500/30 selection:text-white noise-overlay overflow-x-hidden">
       <FloatingOrbs />
  
-      {/* ═══ TOP LOGO ═══ */}
+      {/* ═══ CINEMATIC VIDEO BACKGROUND ═══ */}
+      <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden">
+        <video 
+          ref={videoRef}
+          muted 
+          playsInline 
+          preload="auto"
+          onLoadedMetadata={(e) => {
+            e.currentTarget.pause();
+          }}
+          className="w-full h-full object-cover opacity-50 contrast-110 brightness-110"
+        >
+          <source src="https://vhbwfqqvsudznnfoqyjm.supabase.co/storage/v1/object/public/video/Stade.mp4" type="video/mp4" />
+        </video>
+        {/* Darkening overlays for readability - softened to allow more video through */}
+        <div className="absolute inset-0 bg-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/60 via-transparent to-[#050505]/60" />
+      </div>
       <div className="absolute top-10 left-1/2 -translate-x-1/2 z-[100] w-full flex justify-center px-6 pointer-events-none">
         <motion.img 
           initial={{ opacity: 0, y: -20 }}
