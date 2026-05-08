@@ -2157,13 +2157,12 @@ export default function DashboardPage() {
 
                           return Object.entries(grouped).map(([distance, items]) => {
                             const isExpanded = expandedDisciplines.includes(distance);
-                            const hasMultiple = items.length > 1;
 
                             return (
                               <div key={distance} className="flex flex-col gap-2">
                                 <button 
-                                  onClick={() => hasMultiple && setExpandedDisciplines(prev => prev.includes(distance) ? prev.filter(d => d !== distance) : [...prev, distance])}
-                                  className={`flex items-center justify-between p-4 rounded-2xl transition-all ${hasMultiple ? 'hover:bg-slate-50 cursor-pointer' : 'cursor-default'}`}
+                                  onClick={() => setExpandedDisciplines(prev => prev.includes(distance) ? prev.filter(d => d !== distance) : [...prev, distance])}
+                                  className="flex items-center justify-between p-4 rounded-2xl transition-all hover:bg-slate-50 cursor-pointer bg-slate-50/30"
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-black text-[10px]">
@@ -2171,15 +2170,13 @@ export default function DashboardPage() {
                                     </div>
                                     <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900">{distance}</h4>
                                   </div>
-                                  {hasMultiple && (
-                                    <ChevronDown size={16} className={`text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
-                                  )}
+                                  <ChevronDown size={16} className={`text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                                 </button>
 
                                 <AnimatePresence>
-                                  {(!hasMultiple || isExpanded) && (
+                                  {isExpanded && (
                                     <motion.div 
-                                      initial={hasMultiple ? { height: 0, opacity: 0 } : false}
+                                      initial={{ height: 0, opacity: 0 }}
                                       animate={{ height: 'auto', opacity: 1 }}
                                       exit={{ height: 0, opacity: 0 }}
                                       className="flex flex-col gap-2 overflow-hidden px-1"
