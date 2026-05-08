@@ -770,11 +770,11 @@ export default function DashboardPage() {
 
   const handleRemoveSponsor = async (id: string | number, i: number) => {
     if (!confirm("Voulez-vous vraiment supprimer ce partenaire ?")) return;
-    if (id && typeof id === "string") {
+    if (id) {
       try {
         await supabase.from("sponsors").delete().eq("id", id);
       } catch (err) {
-        console.error(err);
+        console.error("Erreur suppression sponsor:", err);
       }
     }
     setSponsors(sponsors.filter((_, idx) => idx !== i));
@@ -1175,7 +1175,7 @@ export default function DashboardPage() {
                           </div>
                           <button 
                             onClick={() => handleRemoveSponsor(sp.id, i)} 
-                            className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
+                            className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center transition-all hover:bg-red-500 hover:text-white shrink-0"
                           >
                             <Trash2 size={16} />
                           </button>
