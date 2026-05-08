@@ -94,7 +94,7 @@ export default function PublicAthleteProfile() {
       if (!username) { setLoading(false); return; }
       try {
         await supabase.from("views").insert([{ count: 1 }]);
-        const { data: profile, error: profErr } = await supabase.from("profiles").select("user_id, bio, avatar_url, full_name").eq("username", username.toLowerCase()).maybeSingle() as any;
+        const { data: profile, error: profErr } = await supabase.from("profiles").select("user_id, bio, avatar_url, full_name, email").eq("username", username.toLowerCase()).maybeSingle() as any;
         if (profErr || !profile?.user_id) { setProfileNotFound(true); setLoading(false); return; }
         
         const uid = profile.user_id;
@@ -106,6 +106,7 @@ export default function PublicAthleteProfile() {
           full_name: profile.full_name, 
           bio: profile.bio, 
           avatar_url: profile.avatar_url, 
+          email: profile.email,
           photos: photoData || [] 
         });
         const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -299,24 +300,12 @@ export default function PublicAthleteProfile() {
 
         {/* The Bento Section: Sponsors unified */}
         <section className="flex flex-col gap-4">
-          {/* Brand support slogan - positioned between links and sponsors grid */}
-          {sponsors.length > 0 && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="flex flex-col items-center justify-center gap-2 mb-2"
-            >
-              <div className="h-px w-10 bg-emerald-500/30" />
-              <p className="text-[9px] md:text-xs uppercase tracking-[0.3em] text-white/40 font-black text-center max-w-2xl leading-relaxed">
-                {sponsors.length === 1 ? `${sponsors[0].name} soutient cet athlète` : 
-                 sponsors.length === 2 ? `${sponsors[0].name} et ${sponsors[1].name} soutiennent cet athlète` :
-                 `${sponsors[0].name}, ${sponsors[1].name} et d'autres soutiennent cet athlète`}
-              </p>
-            </motion.div>
-          )}
-
-          <Sponsors3DSection sponsors={sponsors} hideSlogan={true} />
+          <Sponsors3DSection 
+            title="Sponsors & Partenaires"
+            sponsors={sponsors} 
+            athleteName={profileData.full_name || username}
+            athleteEmail={profileData.email}
+          />
         </section>
 
         {/* ═══ GALLERY ═══ */}

@@ -13,6 +13,7 @@ ALTER TABLE public.views ADD COLUMN IF NOT EXISTS profile_id UUID REFERENCES aut
 -- Si on utilisait une simple colonne count, on s'assure qu'elle existe dans profiles (plus simple et efficace pour ce cas)
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS views_count INTEGER DEFAULT 0;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS birth_date TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email TEXT;
 
 -- 3. Créer le bucket "media" pour les photos et vidéos
 INSERT INTO storage.buckets (id, name, public)
