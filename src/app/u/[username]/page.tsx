@@ -99,9 +99,25 @@ export default function PublicAthleteProfile() {
     async function fetchAthleteByUsername() {
       if (!username) { setLoading(false); return; }
       try {
-        await supabase.from("views").insert([{ count: 1 }]);
-        const { data: profile, error: profErr } = await supabase.from("profiles").select("user_id, bio, avatar_url, full_name, email").eq("username", username.toLowerCase()).maybeSingle() as any;
-        if (profErr || !profile?.user_id) { setProfileNotFound(true); setLoading(false); return; }
+        // Debug: Voir ce qu'on cherche
+        console.log("Recherche du profil pour :", username.toLowerCase());
+
+        // Suppression du blocage si l'insert des vues échoue (schéma potentiellement différent)
+        supabase.from("views").insert([{ profile_id: null }]).then(); 
+
+        const { data: profile, error: profErr } = await supabase.from("profiles")
+          .select("user_id, bio, avatar_url, full_name, email")
+          .eq("username", username.toLowerCase())
+          .maybeSingle() as any;
+
+        if (profErr) console.error("Erreur Supabase lors de la recherche :", profErr);
+        
+        if (!profile) {
+          console.warn("Aucun profil trouvé en base pour ce username.");
+          setProfileNotFound(true); 
+          setLoading(false); 
+          return; 
+        }
         
         const uid = profile.user_id;
 

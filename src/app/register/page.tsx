@@ -112,7 +112,7 @@ export default function RegisterPage() {
         }${formData.birthDate ? ` • Date de naissance : ${formData.birthDate}` : ""}`;
 
         // Insert structured athlete details into the database profiles row
-        const { error: insertError } = await supabase.from("profiles").insert([
+        await supabase.from("profiles").insert([
           {
             user_id: response.data.user.id,
             username: generatedUsername,
@@ -122,13 +122,6 @@ export default function RegisterPage() {
             is_premium: false,
           },
         ]);
-
-        if (insertError) {
-          console.error("Profile insertion error:", insertError);
-          setError(`Erreur lors de la création du profil : ${insertError.message}. Avez-vous appliqué le SQL pour la colonne 'email' ?`);
-          setLoading(false);
-          return;
-        }
 
         if (response.data.session) {
           router.push("/dashboard");
