@@ -136,7 +136,7 @@ export function Custom3DChart({ records, isEmbedded = false }: Props) {
               dataKey="formattedDate" 
               axisLine={false} 
               tickLine={false} 
-              tick={{fontSize: 9, fill: 'rgba(255,255,255,0.25)', fontWeight: 800, textTransform: 'uppercase'}} 
+              tick={{fontSize: 9, fill: 'rgba(255,255,255,0.25)', fontWeight: 800}} 
               dy={15}
             />
             <YAxis 
