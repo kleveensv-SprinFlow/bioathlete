@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { GlassCard, ParallaxSection, SectionTitle } from "./ParallaxComponents";
 import { Sponsor } from "@/types";
@@ -12,11 +12,18 @@ interface Props {
 }
 
 export function Sponsors3DSection({ sponsors, showTitle = false, hideSlogan = false }: Props) {
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const { scrollYProgress } = useScroll(
+    isMounted && containerRef.current
+      ? { target: containerRef, offset: ["start end", "end start"] }
+      : {}
+  );
 
   // Nike-style intense parallax values
   const rotateX = useTransform(scrollYProgress, [0, 0.5, 1], [25, 0, -25]);

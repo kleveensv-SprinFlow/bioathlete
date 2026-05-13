@@ -9,12 +9,34 @@ import { supabase } from "@/lib/supabase";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import {
-  XAxis, YAxis, CartesianGrid, Tooltip, Area, AreaChart, ResponsiveContainer,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Area,
+  AreaChart,
+  ResponsiveContainer,
 } from "recharts";
+import Cropper from 'react-easy-crop';
 import { 
-  Edit3, FileText, Share2, Trophy, LogOut, Trash2, User, 
-  ChevronRight, ChevronDown, X, ArrowLeft, Camera, Eye, Check,
-  Users, MousePointer2, TrendingUp, Lock, MessageSquare, Layout, Video, Plus
+  Edit3, 
+  FileText, 
+  Share2, 
+  Trophy, 
+  LogOut, 
+  Trash2, 
+  User, 
+  ChevronRight, 
+  ChevronDown,
+  X, 
+  ArrowLeft,
+  Camera,
+  Eye,
+  Check,
+  Users,
+  MousePointer2,
+  TrendingUp,
+  Lock
 } from "lucide-react";
 
 // Components & Types
@@ -25,20 +47,18 @@ import LivePreviewModal from "./LivePreviewModal";
 import { MediaKitTemplate } from "@/components/pdf/MediaKitTemplate";
 import { PerformanceRaw, SocialLink, Sponsor, Video } from "@/types";
 
-// Extracted dashboard modules
-import { SPONSOR_CATEGORIES, BRAND_CATALOG, ATHLETIC_DISCIPLINES } from "./constants";
-import { processPerformances, getCroppedImg, formatEmbedUrl } from "./utils";
-import ProfileModal from "./ProfileModal";
-import SponsorPickerModal from "./SponsorPickerModal";
-import CropModal from "./CropModal";
-import ShareModal from "./ShareModal";
-import CreatorTool from "./CreatorTool";
-
+// Re-map internal Performance type to shared PerformanceRaw for consistency
 type Performance = PerformanceRaw;
 
 const staggerContainer = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.2 } }
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
+    }
+  }
 };
 
 const staggerItem = {
@@ -46,15 +66,152 @@ const staggerItem = {
   show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
 };
 
+const SPONSOR_CATEGORIES = [
+  { id: "apparel", name: "Vêtements / Chaussures", icon: "👟" },
+  { id: "nutrition", name: "Nutrition / Énergie", icon: "🍎" },
+  { id: "tech", name: "Tech / Accessoires", icon: "⌚" },
+  { id: "care", name: "Santé / Récupération", icon: "❤️" },
+  { id: "lifestyle", name: "Boissons / Lifestyle", icon: "🥤" },
+  { id: "other", name: "Autre domaine", icon: "🏢" }
+];
 
-// Re-export for backward compatibility
-export { processPerformances } from "./utils";
+const BRAND_CATALOG: { [key: string]: string[] } = {
+  apparel: ["Nike", "Adidas", "Puma", "Asics", "New Balance", "Under Armour", "Reebok", "Mizuno", "Salomon", "Hoka", "On Running", "Brooks", "Saucony", "Joma", "Kiprun", "Kalenji"],
+  nutrition: ["Maurten", "Science in Sport (SiS)", "High5", "GU Energy", "MyProtein", "Bulk", "Foodspring", "Prozis", "Optimum Nutrition", "PowerBar", "Gatorade", "Isostar", "Apurna"],
+  tech: ["Garmin", "Polar", "Coros", "Suunto", "Apple Watch", "WHOOP", "Oura", "Shokz", "Theragun", "Hyperice"],
+  care: ["Compex", "Blackroll", "Bauerfeind", "Mueller", "Zamst", "Voltarène", "Deep Heat", "Clinique du Coureur"],
+  lifestyle: ["Red Bull", "Monster Energy", "Nocco", "Holy", "Coca-Cola", "Vitamin Well", "Oakley", "Rudy Project", "100%"]
+};
+
+const ATHLETIC_DISCIPLINES: { [key: string]: string[] } = {
+  "Sprint & Haies": [
+    "60m", "100m", "200m", "400m",
+    "60m Haies", "100m Haies", "110m Haies", "400m Haies"
+  ],
+  "Demi-fond & Fond": [
+    "800m", "1500m", "3000m", "5000m", "10000m", "3000m Steeple"
+  ],
+  "Sauts": [
+    "Saut en hauteur", "Saut à la perche", "Saut en longueur", "Triple saut"
+  ],
+  "Lancers": [
+    "Lancer du poids", "Lancer du disque", "Lancer du marteau", "Lancer du javelot"
+  ],
+  "Épreuves Combinées / Marche": [
+    "Pentathlon", "Heptathlon", "Décathlon",
+    "10km Marche", "20km Marche"
+  ]
+};
+
+
+export function processPerformances(performances: any[]): { [key: string]: any } {
+  const grouped: { [key: string]: any[] } = {};
+
+  performances.forEach(perf => {
+    const dist = perf.distance || "Inconnu";
+    if (!grouped[dist]) {
+      grouped[dist] = [];
+    }
+    grouped[dist].push(perf);
+  });
+
+  const result: { [key: string]: any } = {};
+
+  for (const [distance, records] of Object.entries(grouped)) {
+    const sortedByDate = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sortedByTime = [...records].sort((a, b) => parseFloat(a.temps.toString()) - parseFloat(b.temps.toString()));
+
+    const firstRecord = sortedByDate[0];
+    const bestRecord = sortedByTime[0];
+
+    const firstTime = parseFloat(firstRecord.temps.toString());
+    const bestTime = parseFloat(bestRecord.temps.toString());
+
+    let improvementTimeVal = bestTime - firstTime;
+    let improvementPercentageVal = firstTime > 0 ? (improvementTimeVal / firstTime) * 100 : 0;
+
+    let improvementTime = improvementTimeVal <= 0 ? `${improvementTimeVal.toFixed(2)}s` : `+${improvementTimeVal.toFixed(2)}s`;
+    let improvementPercentage = improvementTimeVal <= 0 ? `${improvementPercentageVal.toFixed(1)}%` : `+${improvementPercentageVal.toFixed(1)}%`;
+
+    result[distance] = {
+      distance,
+      records: sortedByDate,
+      firstRecord,
+      bestRecord,
+      improvementTime,
+      improvementPercentage
+    };
+  }
+
+  return result;
+}
+
+/**
+ * Utility to generate a high quality cropped image
+ */
+async function getCroppedImg(imageSrc: string, pixelCrop: any) {
+  const image: HTMLImageElement = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.addEventListener('load', () => resolve(img));
+    img.addEventListener('error', (error) => reject(error));
+    img.setAttribute('crossOrigin', 'anonymous');
+    img.src = imageSrc;
+  });
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) return null;
+
+  // Set canvas size to the cropped area
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+
+  // Draw the cropped image
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+
+  // Return as blob with high quality
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      resolve(blob);
+    }, 'image/jpeg', 1.0); // 1.0 = Highest quality
+  });
+}
+
+const formatEmbedUrl = (url: string) => {
+  try {
+    if (url.includes("youtube.com") || url.includes("youtu.be")) {
+      const urlObj = new URL(url);
+      let videoId = "";
+      if (url.includes("youtu.be")) {
+        videoId = urlObj.pathname.slice(1);
+      } else {
+        videoId = urlObj.searchParams.get("v") || "";
+      }
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+    return url;
+  } catch {
+    return url;
+  }
+};
+
+// LivePreviewModal is now imported from ./LivePreviewModal.tsx
 
 export default function DashboardPage() {
   const router = useRouter();
 
   const [userId, setUserId] = useState<string | null>(null);
-  const [profileId, setProfileId] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [usernameInput, setUsernameInput] = useState("");
   const [fullNameInput, setFullNameInput] = useState("");
@@ -96,12 +253,6 @@ export default function DashboardPage() {
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [views, setViews] = useState(0);
-  const [viewsTimeframe, setViewsTimeframe] = useState('all');
-  const [filteredViews, setFilteredViews] = useState<number | null>(null);
-  const [isFilteringViews, setIsFilteringViews] = useState(false);
-  const [showTimeframeModal, setShowTimeframeModal] = useState(false);
-  const [showLinkDetailModal, setShowLinkDetailModal] = useState(false);
-  const [linkClicksData, setLinkClicksData] = useState<{[key: string]: number}>({});
   const [expandedDisciplines, setExpandedDisciplines] = useState<string[]>([]);
 
   // Preview handler
@@ -116,7 +267,7 @@ export default function DashboardPage() {
   }, [newGalleryPhotoFile]);
 
   // Form states
-  const [activeTab, setActiveTab] = useState<"apercu" | "stats" | "studio">("apercu");
+  const [activeTab, setActiveTab] = useState("apercu");
   const [newDate, setNewDate] = useState("");
   const [newDistance, setNewDistance] = useState(""); 
   const [newTemps, setNewTemps] = useState("");
@@ -166,7 +317,7 @@ export default function DashboardPage() {
         try {
           const { data: existingProf, error: profErr } = await supabase
             .from("profiles")
-            .select("id, username, is_premium, bio, avatar_url, full_name, views_count, birth_date, phone")
+            .select("username, is_premium, bio, avatar_url, full_name, views_count, birth_date")
             .eq("user_id", uid)
             .maybeSingle();
 
@@ -196,7 +347,6 @@ export default function DashboardPage() {
         }
 
         if (profData) {
-          setProfileId(profData.id);
           setUsername(profData.username || "");
           setUsernameInput(profData.username || "");
           setFullNameInput(profData.full_name || "");
@@ -243,22 +393,6 @@ export default function DashboardPage() {
           .eq("user_id", uid);
         if (!vidErr && vidData) setVideos(vidData);
 
-        // Fetch link clicks
-        if (linkData && linkData.length > 0) {
-          const linkIds = linkData.map(l => l.id);
-          const { data: clicks, error: clicksErr } = await supabase
-            .from('link_clicks')
-            .select('link_id')
-            .in('link_id', linkIds);
-          
-          if (!clicksErr && clicks) {
-            const counts: {[key: string]: number} = {};
-            clicks.forEach(c => {
-              counts[c.link_id] = (counts[c.link_id] || 0) + 1;
-            });
-            setLinkClicksData(counts);
-          }
-        }
       } catch (err) {
         console.error("Erreur chargement Supabase:", err);
       } finally {
@@ -267,43 +401,6 @@ export default function DashboardPage() {
     }
     loadUserAndContent();
   }, [router]);
- 
-  // Fetch Filtered Views
-  useEffect(() => {
-    async function getFilteredViews() {
-      if (!profileId) return;
-      
-      if (viewsTimeframe === 'all') {
-        setFilteredViews(null); // Will fallback to global views_count
-        return;
-      }
-
-      setIsFilteringViews(true);
-      try {
-        let dateFilter = new Date();
-        if (viewsTimeframe === 'year') dateFilter.setFullYear(dateFilter.getFullYear() - 1);
-        else if (viewsTimeframe === '3months') dateFilter.setMonth(dateFilter.getMonth() - 3);
-        else if (viewsTimeframe === 'month') dateFilter.setMonth(dateFilter.getMonth() - 1);
-        else if (viewsTimeframe === 'week') dateFilter.setDate(dateFilter.getDate() - 7);
-
-        const { count, error } = await supabase
-          .from('profile_views')
-          .select('*', { count: 'exact', head: true })
-          .eq('profile_id', profileId)
-          .gte('viewed_at', dateFilter.toISOString());
-
-        if (!error) {
-          setFilteredViews(count);
-        }
-      } catch (err) {
-        console.error("Error filtering views:", err);
-      } finally {
-        setIsFilteringViews(false);
-      }
-    }
-    getFilteredViews();
-  }, [viewsTimeframe, profileId]);
-
 
   const handleExportPDF = async () => {
     const element = document.getElementById('media-kit-pdf-template');
@@ -795,44 +892,13 @@ export default function DashboardPage() {
     doc.save("Media_Kit_BioAthlete.pdf");
   };
 
-  const handleAddSponsor = async () => {
-    if (!userId || !customSponsorName.trim()) return;
-
-    if (!isPremium && sponsors.length >= 3) {
-      setProfError("Limite de 3 marques atteinte. Passe Élite pour plus !");
-      setTimeout(() => setProfError(""), 5000);
-      return;
-    }
-
-    const categoryName = SPONSOR_CATEGORIES.find(c => c.id === selectedCategory)?.name || "Autre";
-    const newSponsor = { 
-      name: customSponsorName.trim(), 
-      logo: "🤝", 
-      category: categoryName, 
-      user_id: userId 
-    };
-
-    try {
-      const { data, error } = await supabase.from("sponsors").insert([newSponsor]).select();
-      if (!error && data && data.length > 0) {
-        setSponsors([...sponsors, data[0]]);
-        setCustomSponsorName("");
-        setShowEquipModal(false);
-        setProfSuccess("Marque ajoutée !");
-        setTimeout(() => setProfSuccess(""), 3000);
-      }
-    } catch (err) {
-      console.error("Error adding sponsor:", err);
-    }
-  };
-
   return (
     <div className="min-h-screen font-sans selection:bg-emerald-500 selection:text-white pb-16 transition-colors duration-500" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
       {/* Background ambient blobs — adapt to theme */}
       <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none z-0" style={{ background: 'var(--blob-1)' }}></div>
       <div className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none z-0" style={{ background: 'var(--blob-2)' }}></div>
 
-      <div className="relative z-10 max-w-md mx-auto px-5 pt-8 flex flex-col gap-5 min-h-screen">
+      <div className="relative z-10 max-w-md mx-auto px-5 pt-8 flex flex-col gap-8 min-h-screen">
         
         {/* Success Toast */}
         <AnimatePresence>
@@ -848,209 +914,76 @@ export default function DashboardPage() {
           )}
         </AnimatePresence>
 
-        <ProfileModal 
-          showProfileModal={showProfileModal}
-          setShowProfileModal={setShowProfileModal}
-          profileView={profileView}
-          setProfileView={setProfileView}
-          avatarUrl={avatarUrl}
-          firstNameInput={firstNameInput}
-          setFirstNameInput={setFirstNameInput}
-          lastNameInput={lastNameInput}
-          setLastNameInput={setLastNameInput}
-          username={username}
-          usernameInput={usernameInput}
-          setUsernameInput={setUsernameInput}
-          phoneInput={phoneInput}
-          setPhoneInput={setPhoneInput}
-          bioInput={bioInput}
-          setBioInput={setBioInput}
-          handleSaveProfile={handleSaveProfileInfo}
-          performances={performances}
-          setShowAddPerfModal={setShowAddPerfModal}
-          handleRemovePerf={(e, id) => handleRemovePerformance(id, performances.findIndex(p => p.id === id))}
-          links={links}
-          newLinkTitle={newLinkTitle}
-          setNewLinkTitle={setNewLinkTitle}
-          newLinkUrl={newLinkUrl}
-          setNewLinkUrl={setNewLinkUrl}
-          handleAddLink={handleAddLink}
-          handleRemoveLink={(e, id) => handleRemoveLink(id, links.findIndex(l => l.id === id))}
-          photoGallery={photoGallery}
-          setShowAddPhotoModal={setShowAddPhotoModal}
-          handleRemoveGalleryPhoto={handleRemoveGalleryPhoto}
-          sponsors={sponsors}
-          setShowEquipModal={setShowEquipModal}
-          handleRemoveSponsor={handleRemoveSponsor}
-          deletingId={deletingId}
-        />
-
-        <SponsorPickerModal 
-          showEquipModal={showEquipModal}
-          setShowEquipModal={setShowEquipModal}
-          selectedPartner={selectedPartner}
-          setSelectedPartner={setSelectedPartner}
-          selectedCategory={selectedCategory}
-          setSelectedCategory={setSelectedCategory}
-          customSponsorName={customSponsorName}
-          setCustomSponsorName={setCustomSponsorName}
-          handleAddSponsor={handleAddSponsor}
-          isPremium={isPremium}
-        />
-
-        <ShareModal 
-          isOpen={showShareModal} 
-          onClose={() => setShowShareModal(false)} 
-          username={username}
-          onExportPDF={handleExportPDF}
-          isPremium={isPremium}
-        />
-
-        {/* Timeframe Selection Drawer */}
-        <AnimatePresence>
-          {showTimeframeModal && (
-            <div className="fixed inset-0 z-[300] flex flex-col justify-end">
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setShowTimeframeModal(false)}
-                className="absolute inset-0 bg-black/60 backdrop-blur-md"
-              />
-              <motion.div 
-                initial={{ y: "100%" }}
-                animate={{ y: 0 }}
-                exit={{ y: "100%" }}
-                transition={{ type: "spring", damping: 30, stiffness: 300, mass: 0.8 }}
-                className="relative w-full rounded-t-[3rem] overflow-hidden border-t shadow-[0_-20px_50px_rgba(0,0,0,0.3)] p-8 flex flex-col gap-8 pb-12"
-                style={{ background: 'var(--bg-base)', borderColor: 'var(--border)' }}
-              >
-                <div className="w-12 h-1.5 rounded-full opacity-20 mx-auto mb-2" style={{ background: 'var(--text-primary)' }} />
-                
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color: 'var(--accent)' }}>Filtrer par</span>
-                  <h3 className="text-3xl font-black tracking-tighter uppercase" style={{ color: 'var(--text-primary)' }}>Période</h3>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  {[
-                    { id: 'all', label: 'Depuis toujours' },
-                    { id: 'year', label: 'Dernière année' },
-                    { id: '3months', label: 'Derniers 3 mois' },
-                    { id: 'month', label: 'Dernier mois' },
-                    { id: 'week', label: 'Dernière semaine' }
-                  ].map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => {
-                        setViewsTimeframe(p.id);
-                        setShowTimeframeModal(false);
-                      }}
-                      className="w-full p-6 rounded-2xl flex items-center justify-between transition-all border group"
-                      style={{ 
-                        background: viewsTimeframe === p.id ? 'var(--accent-soft)' : 'var(--bg-elevated)',
-                        borderColor: viewsTimeframe === p.id ? 'var(--accent)' : 'var(--border)'
-                      }}
-                    >
-                      <span className={`text-sm font-bold uppercase tracking-widest ${viewsTimeframe === p.id ? 'text-emerald-500' : ''}`} style={viewsTimeframe !== p.id ? { color: 'var(--text-primary)' } : {}}>
-                        {p.label}
-                      </span>
-                      {viewsTimeframe === p.id && <Check size={18} className="text-emerald-500" />}
-                    </button>
-                  ))}
-                </div>
-
-                <button 
-                  onClick={() => setShowTimeframeModal(false)}
-                  className="w-full py-5 bg-black/5 rounded-2xl text-xs font-black uppercase tracking-widest mt-4"
-                  style={{ color: 'var(--text-muted)', background: 'var(--bg-sunken)' }}
-                >
-                  Fermer
-                </button>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* Fixed Header Wrapper */}
-        <div className="fixed top-0 inset-x-0 z-[110] backdrop-blur-xl border-b transition-all duration-300" 
-             style={{ background: 'var(--bg-base)', opacity: 0.98, borderColor: 'var(--border)' }}>
-          <div className="max-w-xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between gap-4 select-none">
-              {/* Left Side: Avatar + Elite Status */}
-              <div className="flex items-center gap-3">
-                <motion.div 
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => setShowProfileModal(true)}
-                  className="w-12 h-12 rounded-full overflow-hidden border-2 shadow-lg cursor-pointer flex-shrink-0"
-                  style={{ borderColor: 'var(--border)', background: 'var(--bg-elevated)' }}
-                >
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="Profil" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center" style={{ color: 'var(--text-muted)' }}>
-                      <User size={20} />
-                    </div>
-                  )}
-                </motion.div>
-
-                {isPremium ? (
-                  <div className="shine-effect bg-gradient-to-r from-emerald-500 to-emerald-600 px-2.5 py-1 rounded-lg border border-emerald-400/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-                    <span className="text-[8px] font-black text-white uppercase tracking-[0.15em] flex items-center gap-1">
-                      <Trophy size={8} className="text-white" />
-                      Élite
-                    </span>
-                  </div>
-                ) : (
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowStripeModal(true)}
-                    className="px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all"
-                    style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                  >
-                    Passer Élite
-                  </motion.button>
-                )}
-              </div>
-
-              {/* Right Side: Actions */}
-              <div className="flex items-center gap-2">
-                {/* Message Icon */}
-                <button 
-                  className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
-                  style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                >
-                  <MessageSquare size={16} />
-                </button>
-
-                {/* Share Icon */}
-                <button 
-                  onClick={() => setShowShareModal(true)}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
-                  style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                >
-                  <Share2 size={16} />
-                </button>
-              </div>
-            </div>
-
-            <motion.h1 
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="text-lg font-black tracking-tighter uppercase shine-effect mt-2"
-              style={{ color: 'var(--text-primary)' }}
+        {/* Top bar */}
+        <div className="flex items-center justify-between select-none">
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-300 select-none cursor-pointer"
+              style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+              title="Partager mon profil"
             >
-              Salut, {firstNameInput || "Athlète"}
-            </motion.h1>
+              <span className="text-base">🔗</span>
+            </button>
+          </div>
+          <div className="flex-1 px-4 flex flex-col items-center">
+            {isInitialLoading ? (
+              <Skeleton className="h-6 w-32 mb-1" />
+            ) : (
+              <h1 className="text-xl font-black tracking-tighter uppercase flex items-center" style={{ color: 'var(--text-primary)' }}>
+                Salut, {(firstNameInput || "Athlète").toUpperCase()}
+                {/* Badge PRO temporaire pour le dev */}
+                <span className="ml-3 inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                  PRO
+                </span>
+              </h1>
+            )}
+            {isPremium ? (
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-500 flex items-center gap-1">
+                <span>✦</span> ÉLITE <span>✦</span>
+              </p>
+            ) : (
+              <p className="text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: 'var(--text-muted)' }}>Gestion du Profil</p>
+            )}
+          </div>
+          <div className="relative">
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 select-none cursor-pointer"
+              style={{ background: 'var(--card-bg)', border: '1px solid var(--border)' }}
+            >
+              {isInitialLoading ? (
+                <Skeleton className="w-full h-full rounded-full" />
+              ) : avatarUrl ? (
+                <img src={avatarUrl} alt="Photo de profil" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-lg font-black select-none" style={{ color: 'var(--text-muted)' }}>
+                  {(firstNameInput || "A").charAt(0).toUpperCase()}
+                </span>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Spacer for Fixed Header */}
-        <div className="h-32 shrink-0" />
 
-
-
+        {/* Navigation Tabs */}
+        <div className="flex overflow-x-auto gap-1 pb-2 scrollbar-none w-full" style={{ borderBottom: '1px solid var(--border)' }}>
+          {[
+            { key: "apercu", label: "Aperçu" },
+            { key: "stats", label: "Statistiques" },
+            { key: "analytics", label: "Media Kit 💎" }
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className="px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.2em] whitespace-nowrap transition-all duration-500 rounded-t-2xl cursor-pointer"
+              style={activeTab === tab.key ? { color: 'var(--text-primary)', borderBottom: '2px solid var(--accent)', background: 'var(--card-bg)' } : { color: 'var(--text-muted)' }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
         {/* Tab Content: Aperçu */}
         {activeTab === "apercu" && (
@@ -1132,199 +1065,136 @@ export default function DashboardPage() {
         {activeTab === "stats" && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-6 w-full">
             
-            <div className="grid grid-cols-1 gap-4">
-              {/* Vues Réelles Block */}
-              <button 
-                onClick={() => setShowTimeframeModal(true)}
-                className="themed-card rounded-[2.5rem] p-8 flex flex-col gap-6 relative overflow-hidden group text-left w-full active:scale-[0.98] transition-all"
-              >
-                <div className="flex flex-col gap-1 relative z-10">
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color: 'var(--accent)' }}>
-                    Nombre de vues
+            <div className="themed-card rounded-[2rem] p-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-600 mb-1">Visibilité</h3>
+                {isInitialLoading ? (
+                  <Skeleton className="h-9 w-24" />
+                ) : (
+                  <p className="text-3xl font-black tracking-tighter" style={{ color: 'var(--text-primary)' }}>
+                    {views || 0} <span className="text-[10px] font-bold uppercase tracking-widest ml-1" style={{ color: 'var(--text-muted)' }}>Vues totales</span>
                   </p>
-                  
-                  {isInitialLoading || isFilteringViews ? (
-                    <Skeleton className="h-20 w-32 mt-2" />
-                  ) : (
-                    <div className="flex items-baseline gap-3 mt-2">
-                      <span className="text-7xl font-black tracking-tighter" style={{ color: 'var(--text-primary)' }}>
-                        {filteredViews ?? views ?? 0}
-                      </span>
-                      <div className="px-2 py-1 rounded-lg bg-black/5 text-[8px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)', background: 'var(--bg-sunken)' }}>
-                        {viewsTimeframe === 'all' ? 'Tps' : viewsTimeframe === 'year' ? '1an' : viewsTimeframe === '3months' ? '3m' : viewsTimeframe === 'month' ? '1m' : '1sem'}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </button>
-
-              {/* Clics sur liens Block */}
-              <button 
-                onClick={() => setShowLinkDetailModal(true)}
-                className="themed-card rounded-[2.5rem] p-8 flex flex-col gap-6 relative overflow-hidden group text-left w-full active:scale-[0.98] transition-all"
-              >
-                <div className="flex flex-col gap-1 relative z-10">
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color: 'var(--accent)' }}>
-                    Clics sur liens
-                  </p>
-                  
-                  {isInitialLoading ? (
-                    <Skeleton className="h-20 w-32 mt-2" />
-                  ) : (
-                    <div className="flex items-baseline gap-3 mt-2">
-                      <span className="text-7xl font-black tracking-tighter" style={{ color: 'var(--text-primary)' }}>
-                        {Object.values(linkClicksData).reduce((a, b) => a + b, 0)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </button>
-
-              {/* Other blocks... */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="themed-card rounded-[2rem] p-6 flex flex-col gap-4 opacity-50 border-dashed" style={{ borderStyle: 'dashed' }}>
-                  <div className="w-10 h-10 rounded-xl bg-zinc-500/10 flex items-center justify-center">
-                    <TrendingUp size={18} className="text-zinc-500" />
-                  </div>
-                  <div>
-                    <div className="text-xl font-black" style={{ color: 'var(--text-primary)' }}>--</div>
-                    <div className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Croissance</div>
-                  </div>
-                </div>
-                <div className="themed-card rounded-[2rem] p-6 flex flex-col gap-4 opacity-50 border-dashed" style={{ borderStyle: 'dashed' }}>
-                  <div className="w-10 h-10 rounded-xl bg-zinc-500/10 flex items-center justify-center">
-                    <Share2 size={18} className="text-zinc-500" />
-                  </div>
-                  <div>
-                    <div className="text-xl font-black" style={{ color: 'var(--text-primary)' }}>--</div>
-                    <div className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Partages générés</div>
-                  </div>
-                </div>
+                )}
+              </div>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-soft)' }}>
+                <Share2 className="text-emerald-500" size={24} />
+              </div>
+            </div>
+ 
+            <div className="themed-card rounded-[2rem] p-6 flex flex-col gap-4">
+              <div>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: 'var(--text-muted)' }}>Audience</h3>
+                <p className="text-sm font-black" style={{ color: 'var(--text-primary)' }}>Activité des 7 derniers jours</p>
+              </div>
+              <div className="h-48 w-full pt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={[
+                    { day: 'Lun', val: Math.floor((views || 10) * 0.1) },
+                    { day: 'Mar', val: Math.floor((views || 10) * 0.15) },
+                    { day: 'Mer', val: Math.floor((views || 10) * 0.12) },
+                    { day: 'Jeu', val: Math.floor((views || 10) * 0.25) },
+                    { day: 'Ven', val: Math.floor((views || 10) * 0.35) },
+                    { day: 'Sam', val: Math.floor((views || 10) * 0.45) },
+                    { day: 'Dim', val: (views || 10) }
+                  ]}>
+                    <defs>
+                      <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 700}} />
+                    <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: '900'}} />
+                    <Area type="monotone" dataKey="val" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorViews)" />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* Link Clicks Detail Drawer */}
-        <AnimatePresence>
-          {showLinkDetailModal && (
-            <div className="fixed inset-0 z-[300] flex flex-col justify-end">
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setShowLinkDetailModal(false)}
-                className="absolute inset-0 bg-black/60 backdrop-blur-md"
-              />
-              <motion.div 
-                initial={{ y: "100%" }}
-                animate={{ y: 0 }}
-                exit={{ y: "100%" }}
-                transition={{ type: "spring", damping: 30, stiffness: 300, mass: 0.8 }}
-                className="relative w-full rounded-t-[3rem] overflow-hidden border-t shadow-[0_-20px_50px_rgba(0,0,0,0.3)] p-8 flex flex-col gap-8 pb-12"
-                style={{ background: 'var(--bg-base)', borderColor: 'var(--border)' }}
-              >
-                <div className="w-12 h-1.5 rounded-full opacity-20 mx-auto mb-2" style={{ background: 'var(--text-primary)' }} />
-                
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color: 'var(--accent)' }}>Détails</span>
-                  <h3 className="text-3xl font-black tracking-tighter uppercase" style={{ color: 'var(--text-primary)' }}>Clics par lien</h3>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  {links.length > 0 ? links.map((link) => (
-                    <div 
-                      key={link.id}
-                      className="w-full p-5 rounded-2xl flex items-center justify-between border shadow-sm"
-                      style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-black/5 flex items-center justify-center text-xl">
-                          {link.icon || "🔗"}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{link.title}</span>
-                          <span className="text-[10px] text-zinc-500 truncate max-w-[150px]">{link.url.replace(/^https?:\/\/(www\.)?/, '')}</span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end">
-                        <span className="text-xl font-black" style={{ color: 'var(--text-primary)' }}>
-                          {linkClicksData[link.id] || 0}
-                        </span>
-                        <span className="text-[8px] font-bold uppercase tracking-widest text-zinc-500">Clics</span>
-                      </div>
-                    </div>
-                  )) : (
-                    <p className="text-center py-8 text-sm text-zinc-500 italic">Aucun lien configuré.</p>
-                  )}
-                </div>
-
-                <button 
-                  onClick={() => setShowLinkDetailModal(false)}
-                  className="w-full py-5 bg-black/5 rounded-2xl text-xs font-black uppercase tracking-widest mt-4"
-                  style={{ color: 'var(--text-muted)', background: 'var(--bg-sunken)' }}
-                >
-                  Fermer
-                </button>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* Tab Content: Studio Créateur */}
-        {activeTab === "studio" && (
+        {/* Tab Content: Media Kit Analytics */}
+        {activeTab === "analytics" && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-6 w-full">
-            <CreatorTool 
-              performances={performances}
-              photoGallery={photoGallery}
-              videos={videos}
-              isPremium={isPremium}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: 'Vues Totales', value: views || 0, icon: Users, color: 'text-blue-400' },
+                { label: 'Taux de Clic', value: '12.4%', icon: MousePointer2, color: 'text-emerald-400' },
+                { label: 'Partages', value: '48', icon: Share2, color: 'text-purple-400' },
+                { label: 'Croissance', value: '+15%', icon: TrendingUp, color: 'text-orange-400' },
+              ].map((stat, i) => {
+                const isLocked = i > 0 && !isPremium;
+                return (
+                  <div key={i} className="themed-card rounded-3xl p-5 flex flex-col gap-3 relative overflow-hidden group">
+                     {isLocked && (
+                       <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/60 backdrop-blur-[4px] rounded-3xl">
+                         <Lock size={20} className="text-emerald-500 mb-1" />
+                         <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Version PRO</span>
+                       </div>
+                     )}
+                     <div className={`absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity ${isLocked ? 'hidden' : ''}`} />
+                     <div className={`flex items-center justify-between relative z-10 ${isLocked ? 'opacity-30 blur-[2px]' : ''}`}>
+                       <div className="p-2 rounded-xl bg-zinc-500/10 border border-zinc-500/10">
+                         <stat.icon size={16} className={stat.color} />
+                       </div>
+                       <span className="text-[8px] font-bold uppercase tracking-widest text-zinc-500">30j</span>
+                     </div>
+                     <div className={`relative z-10 ${isLocked ? 'opacity-30 blur-[2px]' : ''}`}>
+                       <div className="text-xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>{stat.value}</div>
+                       <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">{stat.label}</div>
+                     </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Hidden PDF Template */}
+            <div className="absolute -left-[9999px] top-0 pointer-events-none">
+              <MediaKitTemplate 
+                profileData={{
+                  fullName: `${firstNameInput} ${lastNameInput}`.trim(),
+                  bio: bioInput,
+                  avatarUrl: avatarUrl,
+                  email: emailInput,
+                  phone: phoneInput
+                }}
+                socialLinks={links}
+                records={performances}
+                sponsors={sponsors}
+              />
+            </div>
+
+            <div className="themed-card rounded-[2.5rem] p-8 text-center relative overflow-hidden">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-emerald-500/10 blur-[60px] rounded-full pointer-events-none" />
+              <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-emerald-400 mx-auto mb-4 relative z-10 shadow-lg">
+                <FileText size={24} />
+              </div>
+              <h3 className="text-lg font-black tracking-tight mb-2 relative z-10" style={{ color: 'var(--text-primary)' }}>Media Kit PDF</h3>
+              <p className="text-[10px] font-medium text-zinc-500 max-w-[200px] mx-auto mb-6 relative z-10 uppercase tracking-wide leading-relaxed">
+                Exportez un document professionnel pour vos partenaires.
+              </p>
+              <button 
+                onClick={() => {
+                  if (!isPremium) {
+                    setShowStripeModal(true);
+                  } else {
+                    handleExportPDF();
+                  }
+                }}
+                className="relative z-10 w-full py-3 bg-emerald-500 text-black font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95"
+              >
+                {isPremium ? "Générer le Media Kit (PDF)" : "Déverrouiller avec BioAthlete PRO"}
+              </button>
+            </div>
           </motion.div>
         )}
 
-        {/* --- FIXED BOTTOM TABBAR --- */}
-        <div className="fixed bottom-0 inset-x-0 p-6 z-[110] pointer-events-none">
-          <motion.div 
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            className="max-w-md mx-auto pointer-events-auto"
-          >
-            <div className="rounded-full p-2 flex items-center justify-between shadow-2xl backdrop-blur-3xl border" 
-                 style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
-              {[
-                { id: 'apercu', icon: Layout, label: 'Aperçu' },
-                { id: 'stats', icon: TrendingUp, label: 'Stats' },
-                { id: 'studio', icon: Plus, label: 'Studio' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`relative flex items-center gap-2 px-6 py-3 rounded-full transition-all duration-500 overflow-hidden group ${activeTab === tab.id ? "text-black" : "text-white/60 hover:text-white"}`}
-                  style={{ color: activeTab === tab.id ? 'var(--bg-base)' : 'var(--text-muted)' }}
-                >
-                  {activeTab === tab.id && (
-                    <motion.div 
-                      layoutId="tab-pill"
-                      className="absolute inset-0"
-                      style={{ background: 'var(--accent)' }}
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-                  <tab.icon size={18} className="relative z-10" />
-                  {activeTab === tab.id && (
-                    <motion.span 
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: 'auto' }}
-                      className="text-[10px] font-black uppercase tracking-widest relative z-10 overflow-hidden whitespace-nowrap"
-                    >
-                      {tab.label}
-                    </motion.span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </motion.div>
+
+        <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 text-center mt-2 shadow-xl select-none">
+          <p className="text-[10px] text-gray-500 font-semibold leading-relaxed">
+            Rappel : L&apos;athlète s&apos;engage à posséder l&apos;ensemble des droits de diffusion et d&apos;auteur pour les images, vidéos et contenus qu&apos;il publie sur son profil.
+          </p>
         </div>
 
         {/* Stripe & Share Modals here... */}
@@ -1406,30 +1276,6 @@ export default function DashboardPage() {
                         </div>
                       </button>
                     </div>
-
-                    <button
-                      onClick={async () => {
-                        await supabase.auth.signOut();
-                        router.push('/login');
-                      }}
-                      className="w-full py-5 bg-red-50 border border-red-200 text-red-500 font-black text-[10px] uppercase tracking-[0.2em] rounded-[2.5rem] hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-3 active:scale-95"
-                    >
-                      <LogOut size={16} />
-                      <span>Se déconnecter</span>
-                    </button>
-
-                    <div className="flex flex-col items-center gap-4 mt-4 opacity-40">
-                      <div className="flex items-center gap-3 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                        <Link href="/cgu" className="hover:text-slate-900 transition-colors">CGU</Link>
-                        <span className="text-slate-300">•</span>
-                        <Link href="/confidentialite" className="hover:text-slate-900 transition-colors">Confidentialité</Link>
-                        <span className="text-slate-300">•</span>
-                        <Link href="/mentions-legales" className="hover:text-slate-900 transition-colors">Mentions Légales</Link>
-                      </div>
-                      <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
-                        © {new Date().getFullYear()} BioAthlete. Tous droits réservés.
-                      </p>
-                    </div>
                   </div>
                 )}
 
@@ -1472,117 +1318,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 )}
-
-                {profileView === 'identity' && (
-                  <div className="flex flex-col gap-8 animate-slideInRight">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-emerald-600 font-black uppercase tracking-[0.3em] mb-2">Configuration</span>
-                      <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">Identité</h3>
-                    </div>
-                    <form onSubmit={(e) => { e.preventDefault(); handleSaveProfile(e); }} className="flex flex-col gap-6">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="flex flex-col gap-2">
-                          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Prénom</label>
-                          <input type="text" value={firstNameInput} onChange={e => setFirstNameInput(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-900 focus:border-slate-900 focus:outline-none font-bold" />
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nom</label>
-                          <input type="text" value={lastNameInput} onChange={e => setLastNameInput(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-900 focus:border-slate-900 focus:outline-none font-bold" />
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nom d'utilisateur</label>
-                        <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden focus-within:border-slate-900">
-                          <span className="px-4 text-slate-400 font-bold bg-slate-100 border-r border-slate-200">@</span>
-                          <input type="text" value={usernameInput} onChange={e => setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} className="w-full bg-transparent p-4 text-slate-900 outline-none font-bold" />
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Téléphone</label>
-                        <input type="tel" value={phoneInput} onChange={e => setPhoneInput(e.target.value)} placeholder="+33 6 12 34 56 78" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-900 focus:border-slate-900 focus:outline-none font-bold" />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Biographie</label>
-                        <textarea value={bioInput} onChange={e => setBioInput(e.target.value)} rows={3} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-900 focus:border-slate-900 focus:outline-none font-bold resize-none"></textarea>
-                      </div>
-                      <button type="submit" className="w-full py-4 bg-emerald-500 text-black font-black text-xs uppercase tracking-widest rounded-xl hover:bg-emerald-400 transition-all shadow-lg active:scale-95">Sauvegarder les modifications</button>
-                    </form>
-                  </div>
-                )}
-
-                {profileView === 'performances' && (
-                  <div className="flex flex-col gap-8 animate-slideInRight">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-emerald-600 font-black uppercase tracking-[0.3em] mb-2">Gestion</span>
-                      <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">Performances</h3>
-                    </div>
-                    <button onClick={() => setShowAddPerfModal(true)} className="w-full py-6 bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] rounded-[2.5rem] shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3 active:scale-95">
-                      <Trophy size={18} /><span>Ajouter une performance</span>
-                    </button>
-                    <div className="flex flex-col gap-4">
-                      {performances.length > 0 ? performances.map((perf, i) => (
-                        <div key={perf.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex justify-between items-center shadow-sm">
-                          <div>
-                            <p className="font-bold text-slate-900">{perf.distance}</p>
-                            <p className="text-xs text-slate-500">{perf.temps}s • {perf.competition}</p>
-                          </div>
-                          <button onClick={(e) => handleRemovePerf(e, perf.id)} className="p-3 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      )) : <p className="text-sm text-slate-500 text-center py-8 italic">Aucune performance enregistrée.</p>}
-                    </div>
-                  </div>
-                )}
-
-                {profileView === 'links' && (
-                  <div className="flex flex-col gap-8 animate-slideInRight">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-emerald-600 font-black uppercase tracking-[0.3em] mb-2">Réseaux</span>
-                      <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">Mes Liens</h3>
-                    </div>
-                    <form onSubmit={handleAddLink} className="flex flex-col gap-4 bg-slate-50 p-6 rounded-[2.5rem] border border-slate-200">
-                      <input type="text" value={newLinkTitle} onChange={e => setNewLinkTitle(e.target.value)} placeholder="Titre (ex: Instagram)" required className="w-full bg-white border border-slate-200 rounded-xl p-4 text-slate-900 font-bold focus:border-emerald-500 outline-none" />
-                      <input type="url" value={newLinkUrl} onChange={e => setNewLinkUrl(e.target.value)} placeholder="https://..." required className="w-full bg-white border border-slate-200 rounded-xl p-4 text-slate-900 font-bold focus:border-emerald-500 outline-none" />
-                      <button type="submit" className="w-full py-4 bg-emerald-500 text-black font-black text-xs uppercase tracking-widest rounded-xl hover:bg-emerald-400 transition-all">Ajouter</button>
-                    </form>
-                    <div className="flex flex-col gap-3">
-                      {links.map((link) => (
-                        <div key={link.id} className="bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm">
-                          <div className="truncate">
-                            <p className="font-bold text-slate-900 text-sm truncate">{link.title}</p>
-                            <p className="text-[10px] text-slate-500 truncate">{link.url}</p>
-                          </div>
-                          <button onClick={(e) => handleRemoveLink(e, link.id)} className="p-3 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all flex-shrink-0">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {profileView === 'photos' && (
-                  <div className="flex flex-col gap-8 animate-slideInRight">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-emerald-600 font-black uppercase tracking-[0.3em] mb-2">Galerie</span>
-                      <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">Mes Photos</h3>
-                    </div>
-                    <button onClick={() => setShowAddPhotoModal(true)} className="w-full py-6 bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] rounded-[2.5rem] shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3 active:scale-95">
-                      <Camera size={18} /><span>Ajouter une photo</span>
-                    </button>
-                    <div className="grid grid-cols-2 gap-4">
-                      {photoGallery.length > 0 ? photoGallery.map((photo) => (
-                        <div key={photo.id} className="relative group rounded-2xl overflow-hidden aspect-square border border-slate-200">
-                          <img src={photo.url} alt={photo.title} className="w-full h-full object-cover" />
-                          <button onClick={() => handleRemoveGalleryPhoto(photo.id)} className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      )) : <p className="text-sm text-slate-500 text-center py-8 italic col-span-2">Aucune photo dans la galerie.</p>}
-                    </div>
-                  </div>
-                )}
+                {/* ... (Other views) ... */}
               </div>
             </motion.div>
           )}
@@ -1752,7 +1488,6 @@ export default function DashboardPage() {
           )}
         </AnimatePresence>
 
-        <div className="h-32 shrink-0" />
       </div>
     </div>
   );

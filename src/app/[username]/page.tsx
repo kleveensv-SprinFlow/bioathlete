@@ -43,6 +43,7 @@ export default function PublicAthleteProfile() {
   const [profileNotFound, setProfileNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<{ 
+    id?: string;
     full_name?: string; 
     bio?: string; 
     avatar_url?: string; 
@@ -56,6 +57,32 @@ export default function PublicAthleteProfile() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [processedPerformances, setProcessedPerformances] = useState<{ [key: string]: ProcessedDiscipline }>({});
   const [selectedDiscipline, setSelectedDiscipline] = useState<string | null>(null);
+
+  // Enregistre une vue pour le Analytics Media Kit
+  useEffect(() => {
+    const recordView = async () => {
+      if (!profileData?.id) return; // Sécurité : on attend que le profil soit chargé
+
+      try {
+        // Vérifie si on a déjà enregistré une vue dans cette session (éviter le spam F5)
+        const hasViewed = sessionStorage.getItem(`viewed_${profileData.id}`);
+        if (hasViewed) return;
+
+        // Insère la vue dans Supabase
+        const { error } = await supabase
+          .from('profile_views')
+          .insert([{ profile_id: profileData.id }]);
+
+        if (!error) {
+          sessionStorage.setItem(`viewed_${profileData.id}`, 'true'); // Marque comme vu
+        }
+      } catch (error) {
+        console.error('Erreur lors du comptage de la vue', error);
+      }
+    };
+
+    recordView();
+  }, [profileData?.id]);
 
   const { scrollY } = useScroll();
   const heroScale = useTransform(scrollY, [0, 600], [1, 1.15]);
@@ -130,6 +157,7 @@ export default function PublicAthleteProfile() {
         const { data: photoData } = await supabase.from("photo_gallery").select("*").eq("user_id", uid);
         
         setProfileData({ 
+          id: uid,
           full_name: profile.full_name, 
           bio: profile.bio, 
           avatar_url: profile.avatar_url, 
@@ -329,7 +357,17 @@ export default function PublicAthleteProfile() {
         
         {/* Cinematic Links List - Positioned right after Hero */}
         <section className="w-full">
-          <CinematicLinksList links={links} getLogo={getLinkLogo} />
+          <CinematicLinksList 
+            links={links} 
+            getLogo={getLinkLogo} 
+            onLinkClick={async (linkId) => {
+              try {
+                await supabase.from('link_clicks').insert([{ link_id: linkId }]);
+              } catch (e) {
+                console.error("Tracking error:", e);
+              }
+            }}
+          />
         </section>
 
         {/* The Bento Section: Sponsors unified */}

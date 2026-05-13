@@ -1,7 +1,15 @@
 import type { NextConfig } from "next";
 
+import path from "path";
+
 const nextConfig: NextConfig = {
-  /* config options here */
+  outputFileTracingRoot: path.join(__dirname),
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.output.chunkFilename = 'static/chunks/[name].[contenthash].js';
+    }
+    return config;
+  },
 };
 
 export default nextConfig;

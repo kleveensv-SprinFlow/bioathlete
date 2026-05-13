@@ -200,7 +200,7 @@ export function CinemaGallery({ photos }: { photos: { id: string; url: string; t
 }
 
 // Cinematic 3D List for Links
-export function CinematicLinksList({ links, getLogo }: { links: any[]; getLogo: (url: string) => string | null }) {
+export function CinematicLinksList({ links, getLogo, onLinkClick }: { links: any[]; getLogo: (url: string) => string | null, onLinkClick?: (id: string) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -224,6 +224,7 @@ export function CinematicLinksList({ links, getLogo }: { links: any[]; getLogo: 
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => onLinkClick?.(link.id)}
             initial={{ opacity: 0, x: -30, filter: "blur(10px)" }}
             whileInView={{ opacity: 1, x: 0, filter: "blur(0px)" }}
             viewport={{ once: true }}

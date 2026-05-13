@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { Custom3DChart } from "@/components/CustomChart";
 import { Sponsors3DSection } from "@/components/Sponsors3DSection";
-import { processPerformances } from "../u/[username]/page";
+import { processPerformances } from "../[username]/page";
 import { PerformanceRaw, SocialLink, Sponsor, Video } from "@/types";
 
 /* ═══════════════════════════════════════════════════════════
@@ -136,14 +136,14 @@ export default function LivePreviewModal({ setShowFullPreview, avatarUrl, firstN
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}
-      className="fixed inset-0 z-[100]">
+      className="fixed inset-0 z-[200]">
       
       {/* Scroll progress indicator */}
       {mounted && <ScrollProgress progress={scrollYProgress} />}
 
       {/* Close button */}
       <motion.button onClick={() => setShowFullPreview(false)} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }}
-        className="fixed top-5 right-5 z-[130] w-11 h-11 rounded-full flex items-center justify-center text-white/40 hover:text-white/80 font-medium text-lg transition-colors duration-300 cursor-pointer"
+        className="fixed top-5 right-5 z-[230] w-11 h-11 rounded-full flex items-center justify-center text-white/40 hover:text-white/80 font-medium text-lg transition-colors duration-300 cursor-pointer"
         style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)" }}>
         ✕
       </motion.button>

@@ -13,6 +13,7 @@ ALTER TABLE public.views ADD COLUMN IF NOT EXISTS profile_id UUID REFERENCES aut
 -- Si on utilisait une simple colonne count, on s'assure qu'elle existe dans profiles (plus simple et efficace pour ce cas)
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS views_count INTEGER DEFAULT 0;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS birth_date TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_premium BOOLEAN DEFAULT FALSE;
 
 -- 3. Créer le bucket "media" pour les photos et vidéos
 INSERT INTO storage.buckets (id, name, public)
@@ -40,3 +41,12 @@ CREATE POLICY "Auth Delete"
 ON storage.objects FOR DELETE
 TO authenticated
 USING (bucket_id = 'media' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Table pour suivre les vues des profils (Futur Analytics Premium)
+CREATE TABLE IF NOT EXISTS profile_views (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  viewer_ip_hash TEXT, -- Pour compter les vues uniques sans stocker d'IP
+  viewed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+

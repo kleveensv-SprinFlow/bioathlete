@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       type: "profile",
-      url: `https://bioathlete.space/u/${username}`,
+      url: `https://bioathlete.space/${username}`,
       images: [
         {
           url: "https://bioathlete.space/og-image.png",
