@@ -17,13 +17,13 @@ const CINEMA_EASE = [0.16, 1, 0.3, 1] as const;
 const SPRING_CONFIG = { damping: 20, stiffness: 90 };
 
 // Stagger container
-const stagger = {
+const stagger: any = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.15, delayChildren: 0.3 } }
 };
-const item = {
+const item: any = {
   hidden: { opacity: 0, y: 50, filter: "blur(10px)" },
-  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { type: "spring", ...SPRING_CONFIG } }
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { type: "spring", damping: 20, stiffness: 90 } }
 };
 
 /* ─── Ambient Light Blobs (animated bg) ─── */
