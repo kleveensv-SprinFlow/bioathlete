@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
   LabelList
 } from 'recharts';
-import { PerformanceRaw } from './page';
+import { PerformanceRaw } from '@/types';
 
 interface Props {
   records: PerformanceRaw[];
